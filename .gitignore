@@ -246,7 +246,6 @@ datasets/
 *.json
 *.jsonl
 *.tsv
-*.txt
 *.parquet
 *.feather
 *.xlsx
@@ -255,6 +254,14 @@ raw_data/
 processed_data/
 training_data/
 test_data/
+
+# 단, 프로젝트 설정 파일은 포함
+!requirements.txt
+!pyproject.toml
+!setup.py
+!setup.cfg
+!Pipfile
+!poetry.lock
 
 # MongoDB 덤프
 *.bson
