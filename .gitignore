@@ -216,8 +216,7 @@ __marimo__/
 *.sqlite
 *.sqlite3
 
-# 머신러닝 & AI 모델
-models/
+# 머신러닝 & AI 모델 (훈련된 모델 파일만)
 *.pkl
 *.pickle
 *.joblib
@@ -233,6 +232,14 @@ mlruns/
 experiments/
 logs/
 tensorboard_logs/
+
+# 단, 프로젝트 필수 모델 파일들은 포함
+!models/**/*.py
+!models/**/*.json
+!models/**/*.txt
+!models/**/*.cfg
+!models/**/*.yaml
+!models/**/*.yml
 
 # Hugging Face 캐시
 .cache/
