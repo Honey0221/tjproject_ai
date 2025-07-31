@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
-from pydantic import validator
+from pydantic import field_validator
 # pydantic이 타입 힌트를 통해 환경 변수를 자동으로 유효성 검사 및 변환 처리해줌
 
 class Settings(BaseSettings):
@@ -27,6 +27,13 @@ class Settings(BaseSettings):
   redis_port: int
   redis_db: int
   
+  # PostgreSQL 설정
+  postgres_host: str
+  postgres_port: int
+  postgres_db: str
+  postgres_user: str
+  postgres_password: str
+  
   # 캐시 설정
   cache_expire_time: int
   ranking_cache_expire_time: int
@@ -41,7 +48,7 @@ class Settings(BaseSettings):
     env_file = ".env"
     env_file_encoding = "utf-8"
   
-  @validator('cors_origins')
+  @field_validator('cors_origins')
   def parse_cors_origins(cls, v):
     """CORS origins를 문자열에서 리스트로 변환"""
     if isinstance(v, str):
@@ -57,6 +64,26 @@ class Settings(BaseSettings):
   def redis_url(self) -> str:
     """Redis 연결 URL 생성"""
     return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+  
+  @property
+  def postgres_url(self) -> str:
+    """PostgreSQL 연결 URL 생성"""
+    return f"postgres://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+  
+  @property
+  def tortoise_orm_config(self) -> dict:
+    """Tortoise ORM 설정"""
+    return {
+      "connections": {
+        "default": self.postgres_url
+      },
+      "apps": {
+        "models": {
+          "models": ["app.database.postgres_models"],
+          "default_connection": "default",
+        },
+      },
+    }
 
 # 전역 설정 인스턴스
 settings = Settings() 

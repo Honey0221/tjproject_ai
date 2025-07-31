@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException
 from ..models.schemas import (
   CompanySearchResult, CompanyNewsResult, ErrorResponse, CompanyItem
 )
+from ..schemas.chatbot_schema import InquiryRequest, InquiryResponse
 from ..services.search_service import search_service
+from ..database.postgres_models import Inquiry
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
@@ -27,7 +29,9 @@ async def search_company_for_chatbot(company_name: str):
     company_items = []
     for company in companies[:3]:
       company_name = company.get('name')
-      summary = company.get('summary')[:30] + "..."
+      summary = company.get('summary')[:30]
+      if len(summary) < 30:
+        summary = summary + "..."
       
       company_items.append(CompanyItem(
         name=company_name,
@@ -40,10 +44,10 @@ async def search_company_for_chatbot(company_name: str):
     )
     
   except Exception as e:
-    print(f"기업 검색 중 에러 발생: {str(e)}")
+    print(f"챗봇 기업 검색 중 에러 발생: {str(e)}")
     raise HTTPException(
       status_code=500, 
-      detail=f"기업 검색 중 오류 발생: {str(e)}"
+      detail=f"챗봇 기업 검색 중 오류 발생: {str(e)}"
     )
 
 @router.get(
@@ -69,4 +73,35 @@ async def search_company_news_for_chatbot(company_name: str):
     raise HTTPException(
       status_code=500, 
       detail=f"뉴스 검색 중 오류 발생: {str(e)}"
+    )
+
+@router.post(
+  "/inquiry",
+  response_model=InquiryResponse,
+  summary="문의하기",
+  description="챗봇에서 사용자 문의를 받아 PostgreSQL에 저장합니다.",
+  responses={
+    200: {"model": InquiryResponse, "description": "문의 등록 성공"},
+    400: {"model": ErrorResponse, "description": "잘못된 요청 데이터"},
+    500: {"model": ErrorResponse, "description": "서버 오류"}
+  }
+)
+async def create_inquiry(inquiry: InquiryRequest):
+  """챗봇 문의하기 API"""
+  try:
+    # Tortoise ORM을 사용해 문의사항 생성
+    await Inquiry.create_inquiry(
+      inquiry_type=inquiry.inquiry_type,
+      inquiry_content=inquiry.inquiry_content
+    )
+    
+    return InquiryResponse(
+      message="문의사항이 성공적으로 등록되었습니다. 빠른 시일 내에 답변드리겠습니다."
+    )
+    
+  except Exception as e:
+    print(f"문의하기 처리 중 에러 발생: {str(e)}")
+    raise HTTPException(
+      status_code=500,
+      detail=f"문의하기 처리 중 오류 발생: {str(e)}"
     )

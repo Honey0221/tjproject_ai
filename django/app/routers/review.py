@@ -17,7 +17,7 @@ router = APIRouter(prefix="/review", tags=["review"])
   "/analyze",
   response_model=ReviewAnalysisResponse,
   summary="리뷰 분석",
-  description="회사명을 기반으로 리뷰 감정 분석을 수행합니다.",
+  description="기업명을 기반으로 리뷰 감정 분석을 수행합니다.",
   responses={
     200: {"model": ReviewAnalysisResponse, "description": "분석 성공"},
     400: {"model": ErrorResponse, "description": "잘못된 요청"},
@@ -38,8 +38,7 @@ async def analyze_review(request: ReviewAnalysisRequest):
     total_count = 0
     avg_score = 0.0
     
-    if scored_df and hasattr(scored_df, 'shape') \
-      and not getattr(scored_df, 'empty', True):
+    if scored_df is not None and hasattr(scored_df, 'shape') and not scored_df.empty:
       total_count = scored_df.shape[0] if scored_df.shape[0] > 0 else 0
       if hasattr(scored_df, 'columns') and 'satisfaction_score' in scored_df.columns:
         avg_score = round(scored_df['satisfaction_score'].mean(), 2)
@@ -48,12 +47,15 @@ async def analyze_review(request: ReviewAnalysisRequest):
     pros_analysis = ReviewAnalysisData(
       avg_score=pros_data.get('avg_score'),
       keywords=[
-        KeywordItem(keyword=kw.get('keyword'), frequency=kw.get('frequency'))
+        KeywordItem(keyword=kw[0], frequency=kw[1])
         for kw in pros_data.get('keywords')
       ],
       sample_reviews=[
-        ReviewSample(review=rev.get('review'), score=rev.get('score'))
-        for rev in pros_data.get('sample_reviews')
+        ReviewSample(
+          review=rev['text'] if isinstance(rev, dict) else rev,
+          score=rev['score'] if isinstance(rev, dict) else 0.0
+        )
+        for rev in pros_data.get('sample_reviews', [])
       ]
     )
     
@@ -61,12 +63,15 @@ async def analyze_review(request: ReviewAnalysisRequest):
     cons_analysis = ReviewAnalysisData(
       avg_score=cons_data.get('avg_score'),
       keywords=[
-        KeywordItem(keyword=kw.get('keyword'), frequency=kw.get('frequency'))
+        KeywordItem(keyword=kw[0], frequency=kw[1])
         for kw in cons_data.get('keywords')
       ],
       sample_reviews=[
-        ReviewSample(review=rev.get('review'), score=rev.get('score'))
-        for rev in cons_data.get('sample_reviews')
+        ReviewSample(
+          review=rev['text'] if isinstance(rev, dict) else rev,
+          score=rev['score'] if isinstance(rev, dict) else 0.0
+        )
+        for rev in cons_data.get('sample_reviews', [])
       ]
     )
     
@@ -87,8 +92,7 @@ async def analyze_review(request: ReviewAnalysisRequest):
 @router.get(
   "/cache/stats",
   summary="리뷰 분석 캐시 통계",
-  description="리뷰 분석 캐시 시스템의 통계 정보를 조회합니다.",
-  tags=["cache"]
+  description="리뷰 분석 캐시 시스템의 통계 정보를 조회합니다."
 )
 async def get_review_cache_stats():
   """리뷰 분석 캐시 통계 조회 API"""
@@ -127,12 +131,11 @@ async def get_review_cache_stats():
 @router.delete(
   "/cache/clear",
   summary="리뷰 분석 캐시 초기화",
-  description="리뷰 분석 캐시를 삭제합니다. 특정 회사만 삭제하거나 전체 삭제 가능합니다.",
-  tags=["cache"]
+  description="리뷰 분석 캐시를 삭제합니다. 특정 기업만 삭제하거나 전체 삭제 가능합니다."
 )
 async def clear_review_cache(
   company_name: Optional[str] = Query(
-    None, description="삭제할 특정 회사명 (기본값: 전체 삭제)"
+    None, description="삭제할 특정 기업명 (기본값: 전체 삭제)"
   )
 ):
   """리뷰 분석 캐시 초기화 API"""
@@ -141,7 +144,7 @@ async def clear_review_cache(
     
     message = f"리뷰 분석 캐시 정리 완료: {cleared_count}개 항목 삭제"
     if company_name:
-      message += f" (회사: {company_name})"
+      message += f" (기업: {company_name})"
     else:
       message += " (전체)"
     

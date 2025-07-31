@@ -109,11 +109,6 @@ class SearchService:
     
     cache_key = self._get_cache_key("company_search", search_keyword)
     
-    # 캐시에서 조회
-    cached_result = await self._get_from_cache(cache_key)
-    if cached_result:
-      return cached_result
-    
     # MongoDB에서 검색
     try:
       if search_type == "category":

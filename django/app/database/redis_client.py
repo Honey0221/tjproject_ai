@@ -25,14 +25,11 @@ class RedisClient:
       # 연결 테스트
       await self._redis.ping()
       self._is_connected = True
-      print(f"Redis 연결 성공: {settings.redis_host}:{settings.redis_port}")
     except Exception as e:
       self._is_connected = False
       if settings.require_external_services:
-        print(f"Redis 연결 실패: {str(e)}")
         raise e
       else:
-        print(f"⚠️ Redis 연결 실패 (개발 모드로 계속 실행): {str(e)}")
         self._redis = None
 
   async def disconnect(self):
