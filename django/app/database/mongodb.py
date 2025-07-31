@@ -22,14 +22,11 @@ class MongoDBManager:
       # 연결 테스트
       await self._client.admin.command('ismaster')
       self._is_connected = True
-      print(f"MongoDB 연결 성공: {settings.mongodb_db}")
     except Exception as e:
       self._is_connected = False
       if settings.require_external_services:
-        print(f"MongoDB 연결 실패: {str(e)}")
         raise e
       else:
-        print(f"⚠️ MongoDB 연결 실패 (개발 모드로 계속 실행): {str(e)}")
         self._client = None
         self._db = None
 
@@ -61,7 +58,7 @@ class MongoDBManager:
     return self._is_connected
 
 class CompanyModel:
-  """회사 정보 모델"""
+  """기업 정보 모델"""
   def __init__(self):
     self.db_manager = MongoDBManager()
   
@@ -116,7 +113,7 @@ class CompanyModel:
       return []
 
 class CompanyReviewModel:
-  """회사 리뷰 모델"""
+  """기업 리뷰 모델"""
   def __init__(self):
     self.db_manager = MongoDBManager()
 
@@ -128,7 +125,7 @@ class CompanyReviewModel:
     return self.db_manager.db['company_reviews']
 
   async def get_reviews_by_company(self, name):
-    """회사명으로 리뷰 조회"""
+    """기업명으로 리뷰 조회"""
     try:
       cursor = self.collection.find({"name": name})
       return await cursor.to_list(length=None)

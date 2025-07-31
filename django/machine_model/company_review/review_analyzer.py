@@ -25,8 +25,8 @@ class ReviewSentimentAnalyzer:
     """ 텍스트에서 긍정/부정 점수 반환 """
     result = self.pipeline(text)[0]
     scores = {res['label']: res['score'] for res in result}
-    positive_score = scores.get('1', 0)
-    negative_score = scores.get('0', 0)
+    positive_score = scores.get('1')
+    negative_score = scores.get('0')
     
     return positive_score, negative_score
 
@@ -84,16 +84,21 @@ class ReviewSentimentAnalyzer:
     return [word for word in word_counts.most_common(top_k)]
 
   def get_top_reviews_by_score(self, df, review_type, top_k=3):
-    """특정 타입에서 점수가 높은 리뷰들 반환"""
+    """특정 타입에서 점수가 높은 리뷰들과 점수를 함께 반환"""
     type_df = df[df['type'] == review_type]
     
     # 만족도 점수 기준 내림차순 정렬
     sorted_df = type_df.sort_values('satisfaction_score', ascending=False)
     
-    # 상위 리뷰들 반환
-    top_reviews = sorted_df.head(top_k)['text'].tolist()
+    # 상위 리뷰들과 점수를 함께 반환
+    top_reviews_data = []
+    for _, row in sorted_df.head(top_k).iterrows():
+      top_reviews_data.append({
+        'text': row['text'],
+        'score': round(row['satisfaction_score'], 2)
+      })
     
-    return top_reviews
+    return top_reviews_data
 
   def process_dataframe(self, df):
     """ 감정 분석 전체 적용 """

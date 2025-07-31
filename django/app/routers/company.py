@@ -98,8 +98,7 @@ async def get_company_ranking(
 @router.get(
   "/cache/stats",
   summary="기업 관련 캐시 통계",
-  description="기업 관련 캐시 시스템의 통계 정보를 조회합니다.",
-  tags=["cache"]
+  description="기업 관련 캐시 시스템의 통계 정보를 조회합니다."
 )
 async def get_company_cache_stats():
   """기업 캐시 통계 조회 API"""
@@ -148,8 +147,7 @@ async def get_company_cache_stats():
 @router.delete(
   "/cache/clear",
   summary="기업 캐시 초기화",
-  description="기업 관련 캐시를 삭제합니다. 특정 패턴만 삭제하거나 전체 삭제 가능합니다.",
-  tags=["cache"]
+  description="기업 관련 캐시를 삭제합니다. 특정 패턴만 삭제하거나 전체 삭제 가능합니다."
 )
 async def clear_company_cache(
   pattern: Optional[str] = Query(

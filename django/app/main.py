@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .database.mongodb import mongodb_manager
 from .database.redis_client import redis_client
+from .database.postgres_models import tortoise_manager
 from .routers import company, review, chatbot, emotion, news, analyze
 from datetime import datetime
 from fastapi import HTTPException
@@ -30,6 +31,13 @@ async def lifespan(app: FastAPI):
   else:
     print("⚠️ Redis 연결 실패 (계속 실행)")
   
+  # PostgreSQL (Tortoise ORM) 연결 시도
+  await tortoise_manager.connect()
+  if tortoise_manager.is_connected:
+    print("✅ PostgreSQL 연결 완료")
+  else:
+    print("⚠️ PostgreSQL 연결 실패 (계속 실행)")
+  
   # 개발 모드에서는 외부 서비스 연결 실패와 관계없이 시작
   if settings.dev_mode:
     print("🔧 개발 모드로 FastAPI 애플리케이션 시작!")
@@ -47,9 +55,15 @@ async def lifespan(app: FastAPI):
     await redis_client.disconnect()
     print("✅ Redis 연결 종료")
   
+  # PostgreSQL 종료
+  if tortoise_manager.is_connected:
+    await tortoise_manager.disconnect()
+    print("✅ PostgreSQL 연결 종료")
+  
   print("👋 FastAPI 애플리케이션 종료!")
 
 # FastAPI 애플리케이션 생성
+# lifespan 인자를 사용하여 애플리케이션 시작/종료 시 외부 서비스 연결 상태 확인
 app = FastAPI(lifespan=lifespan)
 
 # CORS 미들웨어 설정
@@ -83,7 +97,8 @@ async def root():
     "mode": "development" if settings.dev_mode else "production",
     "external_services": {
       "mongodb": mongodb_manager.is_connected,
-      "redis": redis_client.is_connected
+      "redis": redis_client.is_connected,
+      "postgresql": tortoise_manager.is_connected
     },
     "endpoints": {
       "system": {
@@ -106,8 +121,9 @@ async def root():
       "chatbot": {
         "welcome": "GET /api/chatbot/welcome",
         "action": "POST /api/chatbot/action",
-        "company_search": "POST /api/chatbot/search/company",
-        "news_search": "POST /api/chatbot/search/news"
+        "company_search": "GET /api/chatbot/search/company",
+        "news_search": "GET /api/chatbot/search/news",
+        "inquiry": "POST /api/chatbot/inquiry"
       }
     },
     "api_documentation": {
@@ -185,8 +201,44 @@ async def health_check():
       "host": f"{settings.redis_host}:{settings.redis_port}",
       "db": settings.redis_db
     }
-    # Redis가 없으면 캐시 기능이 제한됨
-    health_status["status"] = "degraded"
+    if not settings.dev_mode:
+      health_status["status"] = "degraded"
+  
+  # PostgreSQL (Tortoise ORM) 연결 상태 확인
+  if tortoise_manager.is_connected:
+    try:
+      from tortoise import connections
+      conn = connections.get("default")
+      result = await conn.execute_query_dict("SELECT 1 as test")
+      if result and result[0]["test"] == 1:
+        health_status["services"]["postgresql"] = {
+          "status": "healthy",
+          "database": settings.postgres_db,
+          "host": f"{settings.postgres_host}:{settings.postgres_port}",
+          "orm": "Tortoise ORM"
+        }
+      else:
+        raise Exception("연결 테스트 실패")
+    except Exception as e:
+      health_status["services"]["postgresql"] = {
+        "status": "unhealthy",
+        "error": str(e),
+        "database": settings.postgres_db,
+        "host": f"{settings.postgres_host}:{settings.postgres_port}",
+        "orm": "Tortoise ORM"
+      }
+      if not settings.dev_mode:
+        health_status["status"] = "degraded"
+  else:
+    health_status["services"]["postgresql"] = {
+      "status": "disconnected",
+      "message": "Not connected (running in development mode)",
+      "database": settings.postgres_db,
+      "host": f"{settings.postgres_host}:{settings.postgres_port}",
+      "orm": "Tortoise ORM"
+    }
+    if not settings.dev_mode:
+      health_status["status"] = "degraded"
   
   # 머신러닝 모듈 상태 확인
   try:
@@ -218,7 +270,7 @@ async def health_check():
   "/cache", 
   summary="전체 캐시 통계 조회",
   description="모든 캐시 유형의 통계 정보를 반환합니다.",
-  tags=["cache", "admin"]
+  tags=["cache"]
 )
 async def get_all_cache_stats():
   """전체 캐시 시스템 통계 - 모든 캐시 유형의 통합 정보"""
@@ -273,17 +325,14 @@ async def get_all_cache_stats():
 
 @app.get(
   "/cache/backup/status",
-  summary="Redis 백업 상태 확인",
+  summary="캐시 백업 상태 확인",
   description="현재 진행 중인 백업 작업의 상태를 확인합니다.",
-  tags=["cache", "admin"]
+  tags=["cache"]
 )
 async def get_backup_status():
-  """Redis 백업 상태 조회 API"""
+  """캐시 백업 상태 조회 API"""
   try:
-    if not redis_client.is_connected or redis_client._redis is None:
-      raise HTTPException(status_code=503, detail="Redis 서버에 연결되지 않았습니다")
-    
-    # Redis INFO 명령어로 백업 상태 확인
+    # Redis info 명령어로 백업 상태 확인
     info = await redis_client._redis.info()
     
     return {
@@ -306,15 +355,12 @@ async def get_backup_status():
   "/cache/clear",
   summary="전체 캐시 초기화",
   description="모든 캐시 데이터를 삭제합니다 (기업 검색, 랭킹, 리뷰 분석).",
-  tags=["cache", "admin"]
+  tags=["cache"]
 )
 async def clear_all_cache():
   """전체 캐시 초기화 API"""
   try:
-    if not redis_client.is_connected or redis_client._redis is None:
-      raise HTTPException(status_code=503, detail="Redis 서버에 연결되지 않았습니다")
-    
-    # 전체 Redis DB 초기화
+    # Redis flushdb 명령어로 전체 캐시 초기화
     result = await redis_client.flushdb()
     
     return {

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from typing import Any, Optional, Dict, List
+import pandas as pd
 from ..database.mongodb import company_review_model
 from ..database.redis_client import redis_client
 from ..config import settings
@@ -16,9 +17,47 @@ class ReviewAnalysisService:
   
   def _get_cache_key(self, company_name: str) -> str:
     """리뷰 분석 캐시 키 생성"""
-    # 회사명을 해시화하여 안전한 키 생성
+    # 기업명을 해시화하여 안전한 키 생성
     company_hash = hashlib.md5(company_name.encode()).hexdigest()
     return f"review_analysis:{company_hash}"
+  
+  def _serialize_for_cache(self, data: Any) -> Any:
+    """캐시 저장을 위한 데이터 직렬화"""
+    if isinstance(data, pd.DataFrame):
+      # DataFrame을 딕셔너리로 변환 (records 형태)
+      return {
+        '_type': 'dataframe',
+        'data': data.to_dict('records'),
+        'columns': data.columns.tolist(),
+        'shape': data.shape
+      }
+    elif isinstance(data, dict):
+      # 딕셔너리의 각 값에 대해 재귀적으로 직렬화
+      return {key: self._serialize_for_cache(value) for key, value in data.items()}
+    elif isinstance(data, list):
+      # 리스트의 각 항목에 대해 재귀적으로 직렬화
+      return [self._serialize_for_cache(item) for item in data]
+    elif isinstance(data, tuple):
+      # 튜플을 리스트로 변환
+      return [self._serialize_for_cache(item) for item in data]
+    else:
+      # 기본 타입은 그대로 반환
+      return data
+  
+  def _deserialize_from_cache(self, data: Any) -> Any:
+    """캐시에서 읽은 데이터 역직렬화"""
+    if isinstance(data, dict) and data.get('_type') == 'dataframe':
+      # DataFrame 복원
+      return pd.DataFrame(data['data'], columns=data['columns'])
+    elif isinstance(data, dict):
+      # 딕셔너리의 각 값에 대해 재귀적으로 역직렬화
+      return {key: self._deserialize_from_cache(value) for key, value in data.items()}
+    elif isinstance(data, list):
+      # 리스트의 각 항목에 대해 재귀적으로 역직렬화
+      return [self._deserialize_from_cache(item) for item in data]
+    else:
+      # 기본 타입은 그대로 반환
+      return data
   
   async def _get_from_cache(self, key: str) -> Any:
     """Redis 캐시에서 값 조회"""
@@ -28,7 +67,9 @@ class ReviewAnalysisService:
         if value is not None:
           # JSON 파싱 시도
           try:
-            return json.loads(value)
+            json_data = json.loads(value)
+            # 역직렬화 수행
+            return self._deserialize_from_cache(json_data)
           except json.JSONDecodeError:
             return value
       return None
@@ -41,10 +82,11 @@ class ReviewAnalysisService:
     """Redis 캐시에 값 저장"""
     try:
       if redis_client.is_connected and redis_client._redis is not None:
-        if isinstance(value, (dict, list)):
-          redis_value = json.dumps(value, ensure_ascii=False)
-        else:
-          redis_value = value
+        # 직렬화 수행
+        serialized_value = self._serialize_for_cache(value)
+        
+        # JSON으로 변환
+        redis_value = json.dumps(serialized_value, ensure_ascii=False)
         
         success = await redis_client.setex(key, expire_seconds, redis_value)
         if success:
@@ -106,7 +148,7 @@ class ReviewAnalysisService:
   def _get_default_response(self) -> Dict[str, Any]:
     """분석 실패시 기본 응답"""
     return {
-      'scored_df': type('EmptyDataFrame', (), {'shape': (0, 0), 'empty': True})(),
+      'scored_df': pd.DataFrame(),  # 실제 빈 DataFrame 사용
       'pros': {
         'avg_score': 0.0,
         'keywords': [],
@@ -123,7 +165,7 @@ class ReviewAnalysisService:
     """리뷰 분석 캐시 삭제"""
     try:
       if company_name:
-        # 특정 회사의 캐시만 삭제
+        # 특정 기업의 캐시만 삭제
         cache_key = self._get_cache_key(company_name)
         
         redis_deleted = 0

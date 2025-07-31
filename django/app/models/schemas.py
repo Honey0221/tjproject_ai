@@ -1,11 +1,11 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 
 class Company(BaseModel):
   """기본 정보 스키마"""
-  id: Optional[str] = Field(None, description="회사 ID")
-  name: str = Field(..., description="회사명")
+  id: Optional[str] = Field(None, description="기업 ID")
+  name: str = Field(..., description="기업명")
   산업_분야: Optional[str] = Field(None, description="산업 분야")
   crawled_at: Optional[Union[str, datetime]] = Field(None, description="크롤링 시간")
 
@@ -17,21 +17,20 @@ class Company(BaseModel):
   # 기타 필드들은 동적 처리
   extra_fields: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
-  @validator('crawled_at', pre=True)
+  @field_validator('crawled_at', mode='before')
+  @classmethod
   def parse_crawled_at(cls, v):
     """crawled_at 필드를 ISO 형식 문자열로 변환"""
-    if v is None:
-      return None
     if isinstance(v, datetime):
       return v.isoformat()
     return str(v)
 
-  def dict(self, **kwargs):
+  def model_dump(self, **kwargs):
     """딕셔너리 변환 시 extra_fields를 병합"""
-    d = super().dict(**kwargs)
+    d = super().model_dump(**kwargs)
     if self.extra_fields:
       d.update(self.extra_fields)
-    d.pop('extra_fields', None)  # extra_fields 키는 제거
+    d.pop('extra_fields')  # extra_fields 키는 제거
     return d
 
   @classmethod
@@ -51,7 +50,7 @@ class Company(BaseModel):
       normalized_key = key.replace(' ', '_').replace('-', '_')
       
       # 정의된 필드인지 확인
-      if normalized_key in cls.__fields__:
+      if normalized_key in cls.model_fields:
         normalized_doc[normalized_key] = value
       else:
         # 추가 필드로 저장
@@ -63,32 +62,32 @@ class Company(BaseModel):
     return cls(**normalized_doc)
 
 class CompanySearchRequest(BaseModel):
-  """회사 검색 요청 스키마"""
-  name: Optional[str] = Field(None, description="회사명")
+  """기업 검색 요청 스키마"""
+  name: Optional[str] = Field(None, description="기업명")
   category: Optional[str] = Field(None, description="카테고리")
 
 class CompanySearchResponse(BaseModel):
-  """회사 검색 응답 스키마"""
+  """기업 검색 응답 스키마"""
   search_type: str = Field(..., description="검색 유형")
   search_keyword: str = Field(..., description="검색 키워드")
   total_count: int = Field(..., description="총 검색 결과 수")
-  companies: List[Company] = Field(..., description="회사 목록")
+  companies: List[Company] = Field(..., description="기업 목록")
 
 class RankingItem(BaseModel):
   """랭킹 항목 스키마"""
-  name: str = Field(..., description="회사명")
+  name: str = Field(..., description="기업명")
   amount: float = Field(..., description="금액")
   year: int = Field(..., description="연도")
 
 class CompanyRankingResponse(BaseModel):
-  """회사 랭킹 응답 스키마"""
+  """기업 랭킹 응답 스키마"""
   매출액: List[RankingItem] = Field(..., description="매출액 랭킹")
   영업이익: List[RankingItem] = Field(..., description="영업이익 랭킹")
   순이익: List[RankingItem] = Field(..., description="순이익 랭킹")
 
 class ReviewAnalysisRequest(BaseModel):
   """리뷰 분석 요청 스키마"""
-  name: str = Field(..., description="회사명")
+  name: str = Field(..., description="기업명")
 
 class KeywordItem(BaseModel):
   """키워드 항목 스키마"""
