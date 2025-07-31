@@ -185,7 +185,7 @@ cython_debug/
 # 그러나 원한다면 다음 주석을 해제하여 전체 vscode 폴더를 무시할 수 있습니다
 # .vscode/
 
-# Ruff 관련:
+# Ruff 관련
 .ruff_cache/
 
 # PyPI 구성 파일
