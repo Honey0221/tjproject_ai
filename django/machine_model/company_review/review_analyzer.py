@@ -6,6 +6,15 @@ import re
 from collections import Counter
 
 class ReviewSentimentAnalyzer:
+  # 공통 불용어 정의
+  STOPWORDS = {'정말', '너무', '진짜', '그냥', '약간', '조금', '매우', '완전', 
+    '아주', '거의', '항상', '때문', '생각', '느낌', '같다', '있다', '없다', '이다', 
+    '되다', '하다', '그런', '이런', '저런', '그것', '이것', '저것', '회사', '기업', 
+    '직원', '사람', '업무', '일', '때', '곳', '것', '정도', '부분', '좋다', '많다', 
+    '나쁘다', '크다', '작다', '높다', '낮다', '어렵다', '쉽다', '힘들다', '편하다', 
+    '빠르다', '느리다', '새롭다', '오래되다', '중요하다', '심하다'
+  }
+
   def __init__(self):
     # 감정분석에 특화된 모델 사용(KoELECTRA 기반 모델)
     model_name = "Copycats/koelectra-base-v3-generalized-sentiment-analysis"
@@ -43,11 +52,11 @@ class ReviewSentimentAnalyzer:
       # 모든 텍스트에서 의미있는 단어 추출
       meaningful_words = []
       for text in texts:
-        # 명사와 형용사만 추출 (2글자 이상)
+        # 명사와 형용사만 추출 (2글자 이상, 불용어 제외)
         words = okt.pos(text, stem=True)
         filtered_words = [
           word for word, pos in words 
-          if pos in ['Noun', 'Adjective'] and len(word) >= 2
+          if pos in ['Noun', 'Adjective'] and len(word) >= 2 and word not in self.STOPWORDS
         ]
         meaningful_words.extend(filtered_words)
       
@@ -69,13 +78,9 @@ class ReviewSentimentAnalyzer:
     # 한글 단어만 추출 (2글자 이상)
     korean_words = re.findall(r'[가-힣]{2,}', combined_text)
     
-    # 기본 불용어 제거
-    stopwords = {'정말', '너무', '진짜', '그냥', '약간', '조금', '매우', '완전', '아주', 
-                '거의', '항상', '때문', '생각', '느낌', '같다', '있다', '없다', '이다', 
-                '되다', '하다', '그런', '이런', '저런', '그것', '이것', '저것'}
-    
+    # 불용어 제거 (클래스 변수 사용)
     filtered_words = [
-      word for word in korean_words if word not in stopwords and len(word) >= 2]
+      word for word in korean_words if word not in self.STOPWORDS and len(word) >= 2]
     
     # 빈도 계산
     word_counts = Counter(filtered_words)
