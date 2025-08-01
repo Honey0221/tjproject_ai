@@ -6,13 +6,13 @@ import re
 from collections import Counter
 
 class ReviewSentimentAnalyzer:
-  # 공통 불용어 정의
+  # 불용어 정의
   STOPWORDS = {'정말', '너무', '진짜', '그냥', '약간', '조금', '매우', '완전', 
     '아주', '거의', '항상', '때문', '생각', '느낌', '같다', '있다', '없다', '이다', 
     '되다', '하다', '그런', '이런', '저런', '그것', '이것', '저것', '회사', '기업', 
-    '직원', '사람', '업무', '일', '때', '곳', '것', '정도', '부분', '좋다', '많다', 
-    '나쁘다', '크다', '작다', '높다', '낮다', '어렵다', '쉽다', '힘들다', '편하다', 
-    '빠르다', '느리다', '새롭다', '오래되다', '중요하다', '심하다'
+    '일', '때', '곳', '것', '정도', '부분', '좋다', '많다', '크다', '작다', '높다', 
+    '낮다', '나쁘다', '어렵다', '쉽다', '힘들다', '편하다', '빠르다', '느리다', 
+    '새롭다', '오래되다', '중요하다', '심하다'
   }
 
   def __init__(self):
@@ -24,9 +24,8 @@ class ReviewSentimentAnalyzer:
     self.pipeline = TextClassificationPipeline(
       model=self.model,
       tokenizer=self.tokenizer,
-      return_all_scores=True,  # 각 감정 확률 모두 반환
-      top_k=None,
-      truncation=True,
+      return_all_scores=True,  # 모든 감정 확률을 리스트로 반환
+      truncation=True, # 너무 긴 텍스트는 자동으로 자름
       device=0 if torch.cuda.is_available() else -1
     )
 
@@ -56,16 +55,14 @@ class ReviewSentimentAnalyzer:
         words = okt.pos(text, stem=True)
         filtered_words = [
           word for word, pos in words 
-          if pos in ['Noun', 'Adjective'] and len(word) >= 2 and word not in self.STOPWORDS
+          if pos in ['Noun', 'Adjective'] and len(word) >= 2 
+            and word not in self.STOPWORDS
         ]
         meaningful_words.extend(filtered_words)
       
       word_counts = Counter(meaningful_words)
       return [word for word in word_counts.most_common(top_k)]
       
-    except ImportError:
-      print("KoNLPy가 설치되지 않았습니다. 기본 키워드 추출 방식을 사용합니다.")
-      return self._extract_keywords_fallback(texts, top_k)
     except Exception as e:
       print(f"KoNLPy 키워드 추출 중 오류: {str(e)}")
       return self._extract_keywords_fallback(texts, top_k)
@@ -111,13 +108,16 @@ class ReviewSentimentAnalyzer:
 
     for idx, row in df.iterrows():
       text = row['text']
-      r_type = row['type']
+      review_type = row['type']
 
+      # 리뷰별 감정 분석
       pos, neg = self.analyze_sentiment(text)
+
+      # 감정 분석한 결과를 만족도 점수로 변환
       satisfaction = self.compute_satisfaction_score(pos, neg)
 
       results.append({
-        'type': r_type,
+        'type': review_type,
         'text': text,
         'positive_score': pos,
         'negative_score': neg,
@@ -133,14 +133,24 @@ class ReviewSentimentAnalyzer:
     
     # 장점 데이터 분석
     pros_df = scored_df[scored_df['type'] == '장점']
-    pros_avg_score = pros_df['satisfaction_score'].mean() if not pros_df.empty else 0
-    pros_keywords = self.extract_keywords(pros_df['text'].tolist()) if not pros_df.empty else []
+    pros_avg_score = (
+      pros_df['satisfaction_score'].mean() if not pros_df.empty else 0
+    )
+    pros_keywords = (
+      self.extract_keywords(pros_df['text'].tolist()) 
+      if not pros_df.empty else []
+    )
     pros_sample_reviews = self.get_top_reviews_by_score(scored_df, '장점', 3)
     
     # 단점 데이터 분석  
     cons_df = scored_df[scored_df['type'] == '단점']
-    cons_avg_score = cons_df['satisfaction_score'].mean() if not cons_df.empty else 0
-    cons_keywords = self.extract_keywords(cons_df['text'].tolist()) if not cons_df.empty else []
+    cons_avg_score = (
+      cons_df['satisfaction_score'].mean() if not cons_df.empty else 0
+    )
+    cons_keywords = (
+      self.extract_keywords(cons_df['text'].tolist()) 
+      if not cons_df.empty else []
+    )
     cons_sample_reviews = self.get_top_reviews_by_score(scored_df, '단점', 3)
     
     return {
