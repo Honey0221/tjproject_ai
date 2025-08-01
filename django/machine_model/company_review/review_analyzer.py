@@ -26,6 +26,7 @@ class ReviewSentimentAnalyzer:
       tokenizer=self.tokenizer,
       return_all_scores=True,  # 모든 감정 확률을 리스트로 반환
       truncation=True, # 너무 긴 텍스트는 자동으로 자름
+      top_k=None,
       device=0 if torch.cuda.is_available() else -1
     )
 
