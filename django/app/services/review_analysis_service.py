@@ -98,10 +98,6 @@ class ReviewAnalysisService:
       print(f"Redis 리뷰 분석 캐시 저장 오류: {str(e)}")
       return False
 
-  async def get_reviews(self, name: str) -> List[Dict]:
-    """기업 이름으로 리뷰 데이터 조회"""
-    return await company_review_model.get_reviews_by_company(name)
-
   async def analysis_review(self, name: str) -> Dict[str, Any]:
     """리뷰 분석 실행 (캐시 지원)"""
     
@@ -128,19 +124,26 @@ class ReviewAnalysisService:
       print(f"리뷰 분석 중 오류 발생: {str(e)}")
       # 기본 응답 반환
       return self._get_default_response()
+
+  async def get_reviews(self, name: str) -> List[Dict]:
+    """기업 이름으로 리뷰 데이터 조회"""
+    return await company_review_model.get_reviews_by_company(name)
   
   async def _perform_analysis(self, name: str) -> Dict[str, Any]:
     """실제 리뷰 분석 수행"""
     # 리뷰 데이터 조회
     reviews = await self.get_reviews(name)
     
-    # 리뷰 데이터 전처리 (동기 함수이므로 executor에서 실행)
+    # 현재 실행 중인 이벤트 루프 가져오기
     loop = asyncio.get_event_loop()
+
+    # 블로킹 방지를 위해 동기 함수를 별도 스레드(executor)에서 실행해 비동기 처리
+    # 리뷰 데이터 전처리
     df = await loop.run_in_executor(
       None, self.review_dataset.preprocess_reviews, reviews
     )
     
-    # 리뷰 분석 실행 (동기 함수이므로 executor에서 실행)
+    # 리뷰 분석 실행
     return await loop.run_in_executor(
       None, self.review_analyzer.analyze_reviews_with_keywords, df
     )
