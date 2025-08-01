@@ -217,14 +217,10 @@ __marimo__/
 *.sqlite3
 
 # 머신러닝 & AI 모델 (훈련된 모델 파일만)
-*.pkl
-*.pickle
-*.joblib
 *.h5
 *.hdf5
 *.pt
 *.pth
-*.bin
 *.safetensors
 checkpoints/
 wandb/
@@ -245,22 +241,6 @@ tensorboard_logs/
 .cache/
 huggingface/
 transformers_cache/
-
-# 데이터셋
-data/
-datasets/
-*.csv
-*.json
-*.jsonl
-*.tsv
-*.parquet
-*.feather
-*.xlsx
-*.xls
-raw_data/
-processed_data/
-training_data/
-test_data/
 
 # 단, 프로젝트 설정 파일은 포함
 !requirements.txt
@@ -308,7 +288,6 @@ konlpy_data/
 
 # API 키 및 비밀 정보 (.env 외 추가)
 secrets.json
-config.json
 api_keys.txt
 credentials/
 
