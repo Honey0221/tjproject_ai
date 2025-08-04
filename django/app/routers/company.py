@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from ..models.schemas import (
-  CompanySearchResponse, 
-  CompanyRankingResponse, 
+from ..schemas.company_schema import (
+  CompanySearchResponse,
+  CompanyRankingResponse,
   Company,
-  RankingItem,
-  ErrorResponse
+  RankingItem
 )
+from ..schemas.common_schema import ErrorResponse
 from ..services.search_service import search_service
 from datetime import datetime
 

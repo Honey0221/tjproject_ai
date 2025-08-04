@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from datetime import datetime
-from ..models.schemas import (
+from ..schemas.review_analysis_schema import (
   ReviewAnalysisRequest,
   ReviewAnalysisResponse,
   ReviewAnalysisData,
   KeywordItem,
-  ReviewSample,
-  ErrorResponse
+  ReviewSample
 )
+from ..schemas.common_schema import ErrorResponse
 from ..services.review_analysis_service import review_analysis_service
 
 router = APIRouter(prefix="/review", tags=["review"])
