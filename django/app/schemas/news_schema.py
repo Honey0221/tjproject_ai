@@ -39,3 +39,16 @@ class KeywordExtractionRequest(BaseModel):
     headless: Optional[bool] = True
     method: Literal["tfidf", "krwordrank", "lda", "okt", "keybert"] = "tfidf"  # ✅ 제한 추가
 
+
+class NewsItem(BaseModel):
+  """뉴스 아이템 모델"""
+  title: str = Field(..., description="뉴스 제목")
+  summary: str = Field(..., description="뉴스 요약")
+  url: str = Field(..., description="뉴스 원문 URL")
+
+
+class CompanyNewsResult(BaseModel):
+  """기업 뉴스 검색 결과 (챗봇용)"""
+  company_name: str = Field(..., description="기업명")
+  news_list: List[NewsItem] = Field(..., description="뉴스 목록 (최대 3개)")
+

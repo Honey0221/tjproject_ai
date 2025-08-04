@@ -5,7 +5,7 @@ from .config import settings
 from .database.mongodb import mongodb_manager
 from .database.redis_client import redis_client
 from .database.postgres_models import tortoise_manager
-from .routers import company, review, chatbot, emotion, news, analyze
+from .routers import company, review, chatbot, emotion, news, analyze, user_review
 from datetime import datetime
 from fastapi import HTTPException
 
@@ -78,6 +78,7 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(company.router, prefix="/api")
 app.include_router(review.router, prefix="/api")
+app.include_router(user_review.router, prefix="/api")
 app.include_router(chatbot.router, prefix="/api")
 app.include_router(emotion.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
@@ -124,6 +125,20 @@ async def root():
         "company_search": "GET /api/chatbot/search/company",
         "news_search": "GET /api/chatbot/search/news",
         "inquiry": "POST /api/chatbot/inquiry"
+      },
+      "news": {
+        "latest": "GET /api/news/latest/all",
+        "keywords": "POST /api/news/keywords"
+      },
+      "user_review": {
+        "create": "POST /api/user_review",
+        "get": "GET /api/user_review/{review_id}",
+        "update": "PUT /api/user_review/{review_id}",
+        "delete": "DELETE /api/user_review/{review_id}",
+        "company": "GET /api/user_review/{company_id}",
+        "my_reviews": "GET /api/user_review/my-reviews",
+        "replies": "GET /api/user_review/{parent_id}/replies",
+        "like": "POST /api/user_review/{review_id}/like"
       }
     },
     "api_documentation": {

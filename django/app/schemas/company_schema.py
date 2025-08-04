@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 
+
 class Company(BaseModel):
   """기본 정보 스키마"""
   id: Optional[str] = Field(None, description="기업 ID")
@@ -61,10 +62,12 @@ class Company(BaseModel):
     
     return cls(**normalized_doc)
 
+
 class CompanySearchRequest(BaseModel):
   """기업 검색 요청 스키마"""
   name: Optional[str] = Field(None, description="기업명")
   category: Optional[str] = Field(None, description="카테고리")
+
 
 class CompanySearchResponse(BaseModel):
   """기업 검색 응답 스키마"""
@@ -73,11 +76,13 @@ class CompanySearchResponse(BaseModel):
   total_count: int = Field(..., description="총 검색 결과 수")
   companies: List[Company] = Field(..., description="기업 목록")
 
+
 class RankingItem(BaseModel):
   """랭킹 항목 스키마"""
   name: str = Field(..., description="기업명")
   amount: float = Field(..., description="금액")
   year: int = Field(..., description="연도")
+
 
 class CompanyRankingResponse(BaseModel):
   """기업 랭킹 응답 스키마"""
@@ -85,55 +90,14 @@ class CompanyRankingResponse(BaseModel):
   영업이익: List[RankingItem] = Field(..., description="영업이익 랭킹")
   순이익: List[RankingItem] = Field(..., description="순이익 랭킹")
 
-class ReviewAnalysisRequest(BaseModel):
-  """리뷰 분석 요청 스키마"""
-  name: str = Field(..., description="기업명")
-
-class KeywordItem(BaseModel):
-  """키워드 항목 스키마"""
-  keyword: str = Field(..., description="키워드")
-  frequency: int = Field(..., description="빈도")
-
-class ReviewSample(BaseModel):
-  """리뷰 샘플 스키마"""
-  review: str = Field(..., description="리뷰 내용")
-  score: float = Field(..., description="점수")
-
-class ReviewAnalysisData(BaseModel):
-  """리뷰 분석 데이터 스키마"""
-  avg_score: float = Field(..., description="평균 점수")
-  keywords: List[KeywordItem] = Field(..., description="키워드 목록")
-  sample_reviews: List[ReviewSample] = Field(..., description="샘플 리뷰")
-
-class ReviewAnalysisResponse(BaseModel):
-  """리뷰 분석 응답 스키마"""
-  total_count: int = Field(..., description="총 리뷰 수")
-  avg_score: float = Field(..., description="전체 평균 점수")
-  pros: ReviewAnalysisData = Field(..., description="긍정 분석 결과")
-  cons: ReviewAnalysisData = Field(..., description="부정 분석 결과")
 
 class CompanyItem(BaseModel):
   """기업 아이템 모델"""
   name: str = Field(..., description="기업명")
   summary: str = Field(..., description="기업 요약(최대 30자)")
 
+
 class CompanySearchResult(BaseModel):
   """기업 검색 결과 (챗봇용)"""
   search_keyword: str = Field(..., description="검색 키워드")
   companies: List[CompanyItem] = Field(..., description="기업 목록 (최대 3개)")
-
-class NewsItem(BaseModel):
-  """뉴스 아이템 모델"""
-  title: str = Field(..., description="뉴스 제목")
-  summary: str = Field(..., description="뉴스 요약")
-  url: str = Field(..., description="뉴스 원문 URL")
-
-class CompanyNewsResult(BaseModel):
-  """기업 뉴스 검색 결과 (챗봇용)"""
-  company_name: str = Field(..., description="기업명")
-  news_list: List[NewsItem] = Field(..., description="뉴스 목록 (최대 3개)")
-  
-class ErrorResponse(BaseModel):
-  """에러 응답 스키마"""
-  error: str = Field(..., description="에러 메시지")
-  detail: Optional[str] = Field(None, description="상세 정보") 
