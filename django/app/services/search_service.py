@@ -2,7 +2,7 @@ import hashlib
 import json
 import re
 from typing import Any
-from ..database.mongodb import company_model
+from ..models.company import company_model
 from ..database.redis_client import redis_client
 from ..config import settings
 
