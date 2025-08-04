@@ -79,7 +79,7 @@ class Settings(BaseSettings):
       },
       "apps": {
         "models": {
-          "models": ["app.database.postgres_models"],
+          "models": ["app.models.inquiry"],
           "default_connection": "default",
         },
       },

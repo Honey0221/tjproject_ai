@@ -3,7 +3,7 @@ import hashlib
 import json
 from typing import Any, Optional, Dict, List
 import pandas as pd
-from ..database.mongodb import company_review_model
+from ..models.company import company_review_model
 from ..database.redis_client import redis_client
 from ..config import settings
 from machine_model.company_review.review_dataset import ReviewDataset

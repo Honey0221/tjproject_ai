@@ -4,7 +4,7 @@ from ..schemas.news_schema import CompanyNewsResult, NewsItem
 from ..schemas.common_schema import ErrorResponse
 from ..schemas.chatbot_schema import InquiryRequest, InquiryResponse
 from ..services.search_service import search_service
-from ..database.postgres_models import Inquiry
+from ..models.inquiry import Inquiry
 import os
 import json
 
