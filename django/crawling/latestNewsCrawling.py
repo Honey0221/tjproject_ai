@@ -3,7 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
-from driver import undetected_driver  # 사용자 정의 우회 드라이버
+from .driver import undetected_driver  # 사용자 정의 우회 드라이버
 
 
 def get_latest_articles(keyword: str, max_articles: int = 5, headless: bool = True) -> list:

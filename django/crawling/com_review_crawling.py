@@ -4,7 +4,7 @@ import random
 from selenium.webdriver.common.by import By
 import pymongo
 from datetime import datetime
-from driver import company_review_crawler_driver
+from .driver import company_review_crawler_driver
 
 class CompanyReviewCrawler:
   def __init__(self):
