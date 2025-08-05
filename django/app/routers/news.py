@@ -1,17 +1,21 @@
-from fastapi import APIRouter, HTTPException
-from ..schemas.news_schema import LatestNewsRequest, KeywordExtractionRequest
-from ..services.news_service import extract_keywords_from_articles
-from crawling.latestNewsCrawling import get_latest_articles
 import os, json
+from fastapi import APIRouter, HTTPException
+from app.schemas.news_schema import LatestNewsRequest, KeywordExtractionRequest
+from app.services.news_service import crawl_and_extract_keywords_with_cache
+from app.services.news_service import crawl_latest_articles_db
 
-router = APIRouter(prefix="/news", tags=["news"])
+# 기본 접두사와 Swagger 태그 지정
+router = APIRouter(
+    prefix="/news",   # 실제 경로: /api/news/...
+    tags=["news"]     # Swagger UI 태그
+)
 
 # -----------------------------------------------------------------------------
 # ✅ [1] 최신 뉴스 크롤링 (실시간 수집)
 # - 키워드를 기반으로 BigKinds에서 실시간 뉴스 수집
-# - 최대 기사 수: 5개 (하드코딩된 예시)
 # - 프론트 검색창 연동 용도
 # -----------------------------------------------------------------------------
+
 @router.post("/latest")
 def latest_news(req: LatestNewsRequest):
     keyword = req.keyword.strip()
@@ -19,7 +23,7 @@ def latest_news(req: LatestNewsRequest):
         raise HTTPException(status_code=400, detail="키워드를 입력해주세요.")
 
     try:
-        articles = get_latest_articles(keyword, max_articles=5, headless=req.headless)
+        articles = crawl_latest_articles_db(keyword=keyword, headless=req.headless)
         return {
             "keyword": keyword,
             "count": len(articles),
@@ -64,17 +68,13 @@ def latest_all_news():
 # - 개별 기사 키워드 + 전체 통합 키워드 제공
 # -----------------------------------------------------------------------------
 @router.post("/keywords")
-def extract_keywords(req: KeywordExtractionRequest):
-    """
-    ✅ 뉴스 기사에서 키워드를 추출하는 엔드포인트
-    - 필터 조건에 따라 기사 크롤링 후 키워드 추출
-    - req.method에 따라 추출 방식 선택
-    """
+async def extract_keywords(req: KeywordExtractionRequest):
     if not req.keyword.strip():
         raise HTTPException(status_code=400, detail="키워드를 입력해주세요.")
 
     try:
-        result = extract_keywords_from_articles(req)
+        # 기존: result = crawl_and_extract_keywords(req)
+        result = await crawl_and_extract_keywords_with_cache(req)  # ✅ 캐시 적용
         return result
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
