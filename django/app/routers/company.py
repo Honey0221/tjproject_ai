@@ -16,7 +16,7 @@ router = APIRouter(prefix="/companies", tags=["companies"])
   "/search",
   response_model=CompanySearchResponse,
   summary="기업 검색",
-  description="기업명 또는 카테고리로 기업을 검색합니다. DB에 없는 기업은 자동으로 크롤링합니다.",
+  description="기업명 또는 카테고리로 기업을 검색합니다.",
   responses={
     200: {"model": CompanySearchResponse, "description": "검색 성공"},
     400: {"model": ErrorResponse, "description": "잘못된 요청"},
@@ -27,7 +27,7 @@ async def search_companies(
   name: Optional[str] = Query(None, description="검색할 기업명"),
   category: Optional[str] = Query(None, description="검색할 카테고리")
 ):
-  """기업 검색 API (DB에 없으면 자동 크롤링)"""
+  """기업 검색 API"""
   try:
     companies_data = await search_service.search_company_with_cache(
       name=name,
@@ -140,14 +140,15 @@ async def get_company_cache_stats():
     
   except Exception as e:
     print(f"기업 캐시 통계 조회 중 에러 발생: {str(e)}")
-    raise HTTPException(status_code=500, 
-    detail=f"기업 캐시 통계 조회 중 오류 발생: {str(e)}"
-  )
+    raise HTTPException(
+      status_code=500, 
+      detail=f"기업 캐시 통계 조회 중 오류 발생: {str(e)}"
+    )
 
 @router.delete(
   "/cache/clear",
   summary="기업 캐시 초기화",
-  description="기업 관련 캐시를 삭제합니다. 특정 패턴만 삭제하거나 전체 삭제 가능합니다."
+  description="기업 관련 캐시를 삭제합니다. 특정만 삭제하거나 전체 삭제 가능합니다."
 )
 async def clear_company_cache(
   pattern: Optional[str] = Query(

@@ -179,7 +179,8 @@ class CompanyReviewCrawler:
       
       # 검색 실행
       try:
-        first_company_item = driver.find_element(By.CSS_SELECTOR, ".auto_wp ul.companies li:first-child")
+        first_company_item = driver.find_element(
+          By.CSS_SELECTOR, ".auto_wp ul.companies li:first-child")
         
         item_name = first_company_item.get_attribute('name')
         if item_name and item_name == company_name:
@@ -195,7 +196,8 @@ class CompanyReviewCrawler:
       
       # 해당 기업의 리뷰 페이지로 이동
       try:
-        review_links = driver.find_elements(By.CSS_SELECTOR, ".inner_wp li.swiper-slide:nth-child(2)")
+        review_links = driver.find_elements(
+          By.CSS_SELECTOR, ".inner_wp li.swiper-slide:nth-child(2)")
         if len(review_links) > 0:
           review_links[0].click()
           time.sleep(random.uniform(2, 3))
@@ -206,7 +208,6 @@ class CompanyReviewCrawler:
         print(f"  리뷰 페이지 이동 실패: {e}")
         return []
       
-      # 리뷰 크롤링
       reviews = []
       
       try:

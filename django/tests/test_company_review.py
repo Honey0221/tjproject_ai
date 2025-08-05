@@ -74,7 +74,7 @@ async def test_company_review():
         
       else:
         # DB에 없어서 크롤링 실행
-        print(f"🔍 DB에 '{company_name}' 리뷰가 없어 TeamBlind 크롤링을 시작합니다...")
+        print(f"🔍 DB에 '{company_name}' 리뷰가 없어 크롤링을 시작합니다.")
         
         # 리뷰 크롤링 실행
         crawled_reviews = crawler.crawl_single_company_reviews(company_name)
@@ -105,20 +105,6 @@ async def test_company_review():
         
     except Exception as e:
       print(f"❌ 오류 발생: {e}")
-  
-  # 크롤러 리소스 정리
-  try:
-    crawler.close()
-    print("✅ 크롤러 리소스 정리 완료")
-  except:
-    pass
-  
-  # MongoDB 연결 종료
-  try:
-    await mongodb_manager.disconnect()
-    print("✅ MongoDB 연결 종료")
-  except:
-    pass
 
 if __name__ == "__main__":
   try:

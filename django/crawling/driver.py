@@ -155,7 +155,8 @@ def company_review_crawler_driver():
     )
     
     # navigator.webdriver 숨기기
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    driver.execute_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
     return driver
 

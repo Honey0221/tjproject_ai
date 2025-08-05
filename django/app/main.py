@@ -7,7 +7,8 @@ from .database.redis_client import redis_client
 from .database.postgres import tortoise_manager
 from .services.search_service import search_service
 from .services.review_analysis_service import review_analysis_service
-from .routers import company, review, chatbot, emotion, news, analyze, user_review, system
+from .routers import (
+  company, review, chatbot, emotion, news, analyze, user_review, system)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

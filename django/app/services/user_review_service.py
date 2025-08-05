@@ -128,7 +128,10 @@ class UserReviewService:
       return True
       
     except Exception as e:
-      raise HTTPException(status_code=500, detail=f"리뷰 수정 중 오류가 발생했습니다: {str(e)}")
+      raise HTTPException(
+        status_code=500, 
+        detail=f"리뷰 수정 중 오류가 발생했습니다: {str(e)}"
+      )
   
   async def delete_review(self, review_id: str, user_id: int) -> bool:
     """리뷰 삭제"""

@@ -29,7 +29,9 @@ class CompanyCrawler:
     href, company_name, company_idx, total_companies = company_data
     
     try:
-      print(f"  {company_idx+1}/{total_companies}: {company_name} 정보 수집 중... (스레드-{threading.current_thread().name})")
+      print(
+        f"  {company_idx+1}/{total_companies}: {company_name} 정보 수집 중... "
+        f"(스레드-{threading.current_thread().name})")
       
       # 기업 페이지로 이동
       self.driver.get(href)
@@ -38,14 +40,17 @@ class CompanyCrawler:
       company_info = self._extract_company_info(self.driver, company_name)
       
       if company_info:
-        print(f"  ✅ {company_idx+1}/{total_companies}: {company_name} 정보 수집 성공")
+        print(
+          f"✅ {company_idx+1}/{total_companies}: {company_name} 정보 수집 성공")
         return company_info
       else:
-        print(f"  ❌ {company_idx+1}/{total_companies}: {company_name} 정보 수집 실패")
+        print(
+          f"❌ {company_idx+1}/{total_companies}: {company_name} 정보 수집 실패")
         return None
         
     except Exception as e:
-      print(f"  ❌ {company_idx+1}/{total_companies}: {company_name} 크롤링 오류 - {e}")
+      print(
+        f"❌ {company_idx+1}/{total_companies}: {company_name} 크롤링 오류 - {e}")
       return None
 
   def _extract_company_info(self, driver, company_name):
@@ -127,8 +132,6 @@ class CompanyCrawler:
       
   def _process_companies_parallel(self, company_links, category_name):
     """기업들을 병렬로 처리"""
-    print(f"  → {len(company_links)}개 기업을 {self.max_workers}개 스레드로 병렬 처리 시작")
-    
     # 기업 데이터 준비
     company_data_list = []
     for company_idx, (href, company_name) in enumerate(company_links):
@@ -137,7 +140,8 @@ class CompanyCrawler:
     
     # 병렬 처리
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+      max_workers=self.max_workers) as executor:
       # 모든 기업 작업 제출
       future_to_company = {
         executor.submit(self._crawl_single_company, company_data): company_data
@@ -193,7 +197,10 @@ class CompanyCrawler:
       # 두 번째 단계: 각 카테고리 페이지로 이동하여 실제 기업 페이지들 수집
       for category_idx, (category_url, category_name) in enumerate(category_urls):
           
-        print(f"\n=== 카테고리 {category_idx + 1}/{len(category_urls)}: {category_name} 처리 중 ===")
+        print(
+          f"\n=== 카테고리 {category_idx + 1}/{len(category_urls)}: "
+          f"{category_name} 처리 중 ==="
+        )
         
         try:
           self.driver.get(category_url)
@@ -201,7 +208,8 @@ class CompanyCrawler:
           
           # 서울 카테고리인지 확인
           if "서울" in category_name:
-            category_results = self._process_seoul_category_with_pagination(category_name)
+            category_results = \
+              self._process_seoul_category_with_pagination(category_name)
             company_info_list.extend(category_results)
           else:
             # 기존 방식으로 처리 (단일 페이지)
@@ -233,9 +241,10 @@ class CompanyCrawler:
         
         if page_company_links:
           all_company_links.extend(page_company_links)
-          print(f"  ✅ 페이지 {current_page}: {len(page_company_links)}개 기업 링크 수집")
+          print(
+            f"✅ 페이지 {current_page}: {len(page_company_links)}개 기업 링크 수집")
         else:
-          print(f"  ⚠️ 페이지 {current_page}: 기업 링크를 찾을 수 없습니다.")
+          print(f"⚠️ 페이지 {current_page}: 기업 링크를 찾을 수 없습니다.")
         
         # 다음 페이지 버튼 찾기
         next_button = self._find_next_page_button()
@@ -246,18 +255,21 @@ class CompanyCrawler:
           time.sleep(2)
           current_page += 1
         else:
-          print(f"  📋 {category_name}: 더 이상 페이지가 없습니다. 총 {current_page}페이지 처리 완료")
+          print(
+            f"📋 {category_name}: 더 이상 페이지가 없습니다. "
+            f"총 {current_page}페이지 처리 완료")
           break
           
       except Exception as e:
-        print(f"  ❌ 페이지 {current_page} 처리 중 오류: {e}")
+        print(f"❌ 페이지 {current_page} 처리 중 오류: {e}")
         break
     
     print(f"  📊 {category_name}: 총 {len(all_company_links)}개 기업 링크 수집 완료")
     
     # 수집된 모든 기업 링크들을 병렬로 처리
     if all_company_links:
-      category_results = self._process_companies_parallel(all_company_links, category_name)
+      category_results = self._process_companies_parallel(
+        all_company_links, category_name)
       return category_results
     else:
       return []
@@ -268,7 +280,8 @@ class CompanyCrawler:
     
     try:
       # mw-category div 찾기
-      category_div = self.driver.find_element(By.CSS_SELECTOR, "#mw-pages .mw-category")
+      category_div = \
+        self.driver.find_element(By.CSS_SELECTOR, "#mw-pages .mw-category")
       li_elements = category_div.find_elements(By.TAG_NAME, "li")
       
       for i, li in enumerate(li_elements):
@@ -310,7 +323,8 @@ class CompanyCrawler:
     """단일 페이지 카테고리 처리 (기존 방식)"""
     try:
       # mw-category div 찾기
-      category_div = self.driver.find_element(By.CSS_SELECTOR, "#mw-pages .mw-category")
+      category_div = \
+        self.driver.find_element(By.CSS_SELECTOR, "#mw-pages .mw-category")
       second_li_elements = category_div.find_elements(By.TAG_NAME, "li")
       
       print(f"{category_name}에서 {len(second_li_elements)}개의 기업을 찾았습니다.")

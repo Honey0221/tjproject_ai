@@ -78,7 +78,9 @@ class ReviewSentimentAnalyzer:
     
     # 불용어 제거 (클래스 변수 사용)
     filtered_words = [
-      word for word in korean_words if word not in self.STOPWORDS and len(word) >= 2]
+      word for word in korean_words 
+        if word not in self.STOPWORDS and len(word) >= 2
+    ]
     
     # 빈도 계산
     word_counts = Counter(filtered_words)
