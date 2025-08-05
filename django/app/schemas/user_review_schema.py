@@ -1,3 +1,4 @@
+from __future__ import annotations # 자기참조 클래스 사용시 필요
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -24,7 +25,7 @@ class ReviewResponse(BaseModel):
   createdAt: datetime = Field(..., description="작성 시간")
   updatedAt: datetime = Field(..., description="수정 시간")
   deletedAt: Optional[datetime] = Field(None, description="삭제 시간")
-  replies: List['ReviewResponse'] = Field(default=[], description="대댓글 목록")
+  replies: List[ReviewResponse] = Field(default=[], description="대댓글 목록")
 
 class ReviewListResponse(BaseModel):
   """리뷰 목록 응답"""
@@ -35,6 +36,3 @@ class ReviewCreateResponse(BaseModel):
   """리뷰 작성 성공 응답"""
   message: str = Field(..., description="응답 메시지")
   reviewId: str = Field(..., description="생성된 리뷰 ID")
-
-# Forward reference 해결
-ReviewResponse.model_rebuild()
