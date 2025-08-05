@@ -1,7 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, BaseModel
 
 # -----------------------------------------------------------------------------
 # ✅ 최신 뉴스 실시간 크롤링 요청 모델
@@ -37,18 +35,7 @@ class KeywordExtractionRequest(BaseModel):
     period_label: Optional[str] = None
     max_articles: Optional[int] = 100
     headless: Optional[bool] = True
+    top_n: Optional[int] = 10
     method: Literal["tfidf", "krwordrank", "lda", "okt", "keybert"] = "tfidf"  # ✅ 제한 추가
-
-
-class NewsItem(BaseModel):
-  """뉴스 아이템 모델"""
-  title: str = Field(..., description="뉴스 제목")
-  summary: str = Field(..., description="뉴스 요약")
-  url: str = Field(..., description="뉴스 원문 URL")
-
-
-class CompanyNewsResult(BaseModel):
-  """기업 뉴스 검색 결과 (챗봇용)"""
-  company_name: str = Field(..., description="기업명")
-  news_list: List[NewsItem] = Field(..., description="뉴스 목록 (최대 3개)")
+    aggregate_from_individual: Optional[bool] = False  #
 

@@ -3,7 +3,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
-from .driver import undetected_driver  # 사용자 정의 우회 드라이버
+from driver import undetected_driver  # 사용자 정의 우회 드라이버
+from app.database.db.crawling_database import get_existing_keys
+
 
 
 def get_latest_articles(keyword: str, max_articles: int = 5, headless: bool = True) -> list:
@@ -24,6 +26,15 @@ def get_latest_articles(keyword: str, max_articles: int = 5, headless: bool = Tr
     driver = undetected_driver(headless=headless)
     wait = WebDriverWait(driver, 10)
     results = []
+
+    # ✅ 기존 DB에 저장된 (title, date) 키셋 로딩
+    try:
+        existing_keys = get_existing_keys()
+        print(f"🗂 기존 저장 기사 키 개수: {len(existing_keys)}")
+    except Exception as e:
+        print(f"⚠️ 기존 키 로딩 실패(스킵): {e}")
+        existing_keys = set()
+
 
     try:
         # ✅ BigKinds 메인 페이지 접속
@@ -66,10 +77,14 @@ def get_latest_articles(keyword: str, max_articles: int = 5, headless: bool = Tr
                 summary = item.select_one('p.text').get_text(" ", strip=True)
                 press = link_tag.get_text(strip=True)
                 link = link_tag['href']
-
                 # 작성자 및 날짜 추출 (항상 2개 존재하는 것은 아니기 때문에 조건부 처리)
                 date = item.select('p.name')[0].get_text(strip=True) if len(item.select('p.name')) >= 1 else "N/A"
                 writer = item.select('p.name')[1].get_text(strip=True) if len(item.select('p.name')) >= 2 else "N/A"
+
+                key = (title, date)
+                if key in existing_keys:
+                    print(f"🚫 기존 기사 스킵: {title}")
+                    continue
 
                 # ✅ 결과 리스트에 추가
                 results.append({
