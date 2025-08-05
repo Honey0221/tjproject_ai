@@ -50,10 +50,10 @@ class CompanyCrawler:
 
   def _extract_company_info(self, driver, company_name):
     """기업 정보 추출"""
-    # infobox 테이블이 있는지 확인
-    infobox_elements = driver.find_elements(By.CSS_SELECTOR, "table.infobox")
+    # infobox vcard 테이블이 있는지 확인
+    infobox_elements = driver.find_elements(By.CSS_SELECTOR, "table.infobox.vcard")
     if not infobox_elements:
-      print(f"'{company_name}' 페이지에 infobox가 없습니다.")
+      print(f"'{company_name}' 페이지에 없습니다.")
       return None
     
     infobox_table = infobox_elements[0]
