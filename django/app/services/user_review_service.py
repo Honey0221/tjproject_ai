@@ -91,6 +91,9 @@ class UserReviewService:
       if not review:
         return None
       
+      # 단건 조회는 해당 리뷰 하나만 반환 (대댓글 포함 X)
+      review["replies"] = []  # 빈 배열로 초기화
+      
       return ReviewResponse(**review)
       
     except Exception as e:
@@ -160,31 +163,54 @@ class UserReviewService:
       )
   
   async def get_reviews_by_company(self, company_id: str) -> ReviewListResponse:
-    """기업별 리뷰 조회"""
+    """기업별 리뷰 조회 (계층형 구조)"""
     try:
-      # 리뷰 목록 조회
+      # 모든 리뷰 조회 (원글 + 대댓글)
       cursor = self.collection.find({
         "companyId": company_id,
         "deletedAt": None
       }).sort("createdAt", -1)
       
-      reviews = await cursor.to_list(length=None)
+      all_reviews = await cursor.to_list(length=None)
       
-      # 전체 리뷰 수 조회
-      total = await self.collection.count_documents({
-        "companyId": company_id,
-        "deletedAt": None
-      })
+      # 원글과 대댓글 분류
+      main_reviews = []
+      replies_map = {}
       
-      # ObjectId를 문자열로 변환
-      for review in reviews:
+      # ObjectId를 문자열로 변환하고 분류
+      for review in all_reviews:
         review["id"] = str(review["_id"])
         if review.get("parentId"):
           review["parentId"] = str(review["parentId"])
+          # 대댓글인 경우
+          parent_id = review["parentId"]
+          if parent_id not in replies_map:
+            replies_map[parent_id] = []
+          replies_map[parent_id].append(review)
+        else:
+          # 원글인 경우
+          main_reviews.append(review)
         del review["_id"]
       
-      # 응답 데이터 변환
-      review_responses = [ReviewResponse(**review) for review in reviews]
+      # 각 원글에 대댓글 연결 및 정렬
+      review_responses = []
+      for review in main_reviews:
+        review_id = review["id"]
+        # 해당 리뷰의 대댓글들을 createdAt 순으로 정렬 (오래된 순)
+        replies = replies_map.get(review_id, [])
+        replies.sort(key=lambda x: x["createdAt"])
+        
+        # 대댓글을 ReviewResponse로 변환 (replies는 빈 배열로)
+        reply_responses = []
+        for reply in replies:
+          reply["replies"] = []  # 대댓글의 replies는 빈 배열
+          reply_responses.append(ReviewResponse(**reply))
+        
+        review["replies"] = reply_responses
+        review_responses.append(ReviewResponse(**review))
+      
+      # 전체 원글 리뷰 수 (대댓글 제외)
+      total = len(main_reviews)
       
       return ReviewListResponse(total=total, reviews=review_responses)
       

@@ -57,7 +57,7 @@ async def root():
         "get": "GET /api/user_review/{review_id}",
         "update": "PUT /api/user_review/{review_id}",
         "delete": "DELETE /api/user_review/{review_id}",
-        "company": "GET /api/user_review/{company_id}",
+        "company": "GET /api/user_review/company/{company_id}",
         "my_reviews": "GET /api/user_review/my-reviews",
         "replies": "GET /api/user_review/{parent_id}/replies",
         "like": "POST /api/user_review/{review_id}/like"

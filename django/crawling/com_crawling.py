@@ -404,9 +404,7 @@ class CompanyCrawler:
         # JSON 직렬화 가능한 형태로 변환하여 반환
         serializable_company = {}
         for key, value in company_info.items():
-          if key == '_id':
-            continue  # _id는 제외
-          else:
+          if key != '_id':
             # 모든 값을 안전하게 처리
             try:
               import json
