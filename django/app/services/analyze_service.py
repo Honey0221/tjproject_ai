@@ -26,7 +26,7 @@ def analyze_news_filtered(req):
     통합분류, 사건사고분류, 날짜 범위를 기반으로
     BigKinds에서 뉴스 수집 후 감정 분석
     """
-    from driver import undetected_driver
+    from crawling.driver import undetected_driver
 
     driver = undetected_driver(headless=req.headless)
 
@@ -61,7 +61,7 @@ def emotion_batch(req):
     """
     감정 분석 없이 기사만 수집하는 API (데이터 저장 또는 후처리용)
     """
-    from driver import undetected_driver
+    from crawling.driver import undetected_driver
 
     start_date = req.start_date or "2025-01-01"
     end_date = req.end_date or time.strftime("%Y-%m-%d")

@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 import re
-from driver import undetected_driver  # ✅ 우회용 드라이버
+from .driver import undetected_driver  # ✅ 우회용 드라이버
 import os
 from selenium.common.exceptions import TimeoutException
 from fastapi import HTTPException

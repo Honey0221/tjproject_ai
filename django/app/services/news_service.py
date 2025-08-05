@@ -3,7 +3,7 @@ import json
 from crawling.latestNewsCrawling import get_latest_articles
 from fastapi import HTTPException
 from keybert import KeyBERT
-from driver import undetected_driver
+from crawling.driver import undetected_driver
 from crawling.bigKindsCrawling import search_bigkinds
 from app.utils.keyword_extractors import (
     extract_with_keybert, extract_with_tfidf,

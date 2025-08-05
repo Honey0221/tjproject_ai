@@ -6,7 +6,7 @@ import time
 import re
 import concurrent.futures
 import threading
-from driver import company_crawler_driver
+from .driver import company_crawler_driver
 
 class CompanyCrawler:
   def __init__(self, max_workers=4):
