@@ -1,6 +1,4 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
 import pymongo
 from datetime import datetime
@@ -8,7 +6,6 @@ import time
 import re
 import concurrent.futures
 import threading
-from threading import Lock
 from driver import company_crawler_driver
 
 class CompanyCrawler:
@@ -20,68 +17,25 @@ class CompanyCrawler:
     
     # 멀티스레딩 설정
     self.max_workers = max_workers
-    self.lock = Lock()
-    self.total_processed = 0
     
-    # Chrome 옵션 설정
-    self.chrome_options = self._get_chrome_options()
-    
-    # 메인 드라이버 (카테고리 수집용)
-    self.driver = webdriver.Chrome(options=self.chrome_options)
+    # 메인 드라이버 (기업 정보 수집용)
+    self.driver = company_crawler_driver()
     
     # 단일 크롤링용 재사용 드라이버
     self._single_driver = None
 
-  def _get_chrome_options(self):
-    """Chrome 옵션 설정 반환"""
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')  # 헤드리스 모드
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-logging')  # 로그 메시지 숨기기
-    chrome_options.add_argument('--log-level=3')  # 로그 레벨 최소화 (ERROR만)
-    chrome_options.add_argument('--disable-gpu-sandbox')
-    chrome_options.add_argument('--disable-software-rasterizer')
-    chrome_options.add_argument('--disable-background-timer-throttling')
-    chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-    chrome_options.add_argument('--disable-renderer-backgrounding')
-    chrome_options.add_argument('--disable-images')  # 이미지 로딩 비활성화
-    chrome_options.add_argument('--disable-javascript')  # JS 비활성화
-    chrome_options.add_argument(
-      '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)' + \
-      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-    # 로그 스위치 비활성화
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    # 자동화 확장 비활성화
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    
-    return chrome_options
-
-  def _create_worker_driver(self):
-    """워커 스레드용 WebDriver 생성"""
-    driver = webdriver.Chrome(options=self.chrome_options)
-    return driver
-
   def _crawl_single_company(self, company_data):
     """단일 기업 크롤링 (스레드에서 실행)"""
     href, company_name, company_idx, total_companies = company_data
-    driver = None
     
     try:
-      # 워커 드라이버 생성
-      driver = self._create_worker_driver()
-      
-      with self.lock:
-        self.total_processed += 1
-        current_total = self.total_processed
-      
       print(f"  {company_idx+1}/{total_companies}: {company_name} 정보 수집 중... (스레드-{threading.current_thread().name})")
       
       # 기업 페이지로 이동
-      driver.get(href)
+      self.driver.get(href)
       
       # infobox 정보 수집
-      company_info = self._extract_company_info(driver, company_name)
+      company_info = self._extract_company_info(self.driver, company_name)
       
       if company_info:
         print(f"  ✅ {company_idx+1}/{total_companies}: {company_name} 정보 수집 성공")
@@ -93,9 +47,6 @@ class CompanyCrawler:
     except Exception as e:
       print(f"  ❌ {company_idx+1}/{total_companies}: {company_name} 크롤링 오류 - {e}")
       return None
-    finally:
-      if driver:
-        driver.quit()
 
   def _extract_company_info(self, driver, company_name):
     """기업 정보 추출"""

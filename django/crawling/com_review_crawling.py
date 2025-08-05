@@ -1,11 +1,10 @@
 import re
 import time
 import random
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 import pymongo
 from datetime import datetime
+from driver import company_review_crawler_driver
 
 class CompanyReviewCrawler:
   def __init__(self):
@@ -13,67 +12,117 @@ class CompanyReviewCrawler:
     self.client = pymongo.MongoClient('mongodb://localhost:27017/')
     self.db = self.client['company_db']
     self.collection = self.db['company_reviews']
-    
-    self.driver = webdriver.Chrome(options=self._get_chrome_options())
 
-  def _get_chrome_options(self):
-    chrome_options = Options()
+    # 메인 드라이버 (리뷰 수집용)
+    self.driver = company_review_crawler_driver()
     
-    # 더 강력한 봇 감지 우회 설정
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
+    # 재사용 가능한 드라이버
+    self._review_driver = None
+
+  def _get_or_create_review_driver(self):
+    """재사용 가능한 리뷰 크롤링 드라이버 반환"""
+    if self._review_driver is None:
+      print("새 리뷰 드라이버 생성 중...")
+      self._review_driver = company_review_crawler_driver()
+    else:
+      print("기존 리뷰 드라이버 재사용")
+    return self._review_driver
+
+  def crawl_single_company_reviews(self, company_name: str):
+    """
+    단일 기업의 TeamBlind 리뷰 크롤링
+    URL: https://www.teamblind.com/kr/company/{company_name}/reviews
+    """
+    try:
+      # 1. 재사용 드라이버 가져오기
+      driver = self._get_or_create_review_driver()
+      
+      # 2. 직접 리뷰 페이지로 이동
+      review_url = f"https://www.teamblind.com/kr/company/{company_name}/reviews"
+      driver.get(review_url)
+      time.sleep(2)
+      
+      # 3. 리뷰 데이터 추출
+      reviews = self._extract_reviews(driver, company_name)
+      
+      if reviews:
+        # 4. MongoDB 저장
+        self.save_reviews_to_db(reviews)
+        
+        # 첫 번째 리뷰 샘플 출력
+        if len(reviews) > 0:
+          first_review = reviews[0]
+          print(f"\n[샘플 리뷰]")
+          print(f"기업: {first_review['name']}")
+          print(f"장점: {first_review['pros'][:100]}...")
+          print(f"단점: {first_review['cons'][:100]}...\n")
+        
+        return reviews
+      else:
+        print(f"❌ '{company_name}' 리뷰를 찾을 수 없습니다.")
+        return []
+        
+    except Exception as e:
+      print(f"❌ '{company_name}' 리뷰 크롤링 중 오류 발생: {e}")
+      return []
+
+  def _extract_reviews(self, driver, company_name):
+    """리뷰 데이터 추출"""
+    reviews = []
     
-    # Cloudflare 우회를 위한 추가 설정
-    chrome_options.add_argument('--disable-features=VizDisplayCompositor')
-    chrome_options.add_argument('--disable-features=VizServiceDisplay')
-    chrome_options.add_argument('--disable-features=TranslateUI')
-    chrome_options.add_argument('--disable-features=BlinkGenPropertyTrees')
-    chrome_options.add_argument('--disable-features=VizHitTestSurfaceLayer')
-    chrome_options.add_argument('--disable-features=VizSurfaceDisplay')
-    chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+    try:
+      # 리뷰 요소 찾기
+      review_elements = driver.find_elements(By.CLASS_NAME, "review_item")
+      
+      if not review_elements:
+        print(f"   '{company_name}' 페이지에서 리뷰를 찾을 수 없습니다.")
+        return []
+      
+      for review_element in review_elements:
+        # 리뷰 태그 찾기
+        parag_element = review_element.find_element(By.CLASS_NAME, "parag")
+        p_elements = parag_element.find_elements(By.TAG_NAME, "p")
+        
+        # 장점 데이터 추출
+        pros = ""
+        if len(p_elements) > 0:
+          try:
+            pros_span = p_elements[0].find_element(By.TAG_NAME, "span")
+            pros_html = pros_span.get_attribute('innerHTML')
+            if pros_html:
+              pros = pros_html.replace('<br>', ' ').strip()
+              pros = re.sub(r'<[^>]+>', '', pros)
+            else:
+              pros = pros_span.text.strip()
+          except:
+            pros = ""
+        
+        # 단점 데이터 추출
+        cons = ""
+        if len(p_elements) > 1:
+          try:
+            cons_span = p_elements[1].find_element(By.TAG_NAME, "span")
+            cons_html = cons_span.get_attribute('innerHTML')
+            if cons_html:
+              cons = cons_html.replace('<br>', ' ').strip()
+              cons = re.sub(r'<[^>]+>', '', cons)
+            else:
+              cons = cons_span.text.strip()
+          except:
+            cons = ""
+        
+        review_data = {
+          'name': company_name,
+          'pros': pros,
+          'cons': cons,
+          'crawled_at': datetime.now()
+        }
+        reviews.append(review_data)
+            
+    except Exception as e:
+      print(f"   리뷰 추출 중 오류: {e}")
     
-    # 일반 브라우저처럼 보이게 하는 설정
-    chrome_options.add_argument('--disable-extensions-file-access-check')
-    chrome_options.add_argument('--disable-extensions-except')
-    chrome_options.add_argument('--disable-plugins-discovery')
-    chrome_options.add_argument('--disable-preconnect')
-    chrome_options.add_argument('--disable-default-apps')
-    chrome_options.add_argument('--disable-sync')
-    chrome_options.add_argument('--no-first-run')
-    chrome_options.add_argument('--no-default-browser-check')
-    chrome_options.add_argument('--disable-background-timer-throttling')
-    chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-    chrome_options.add_argument('--disable-renderer-backgrounding')
-    chrome_options.add_argument('--disable-ipc-flooding-protection')
-    
-    # 웹 보안 관련 설정
-    chrome_options.add_argument('--disable-web-security')
-    chrome_options.add_argument('--disable-site-isolation-trials')
-    chrome_options.add_argument('--disable-features=VizDisplayCompositor')
-    chrome_options.add_argument('--allow-running-insecure-content')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--ignore-ssl-errors')
-    chrome_options.add_argument('--ignore-certificate-errors-spki-list')
-    
-    # 로그 및 에러 메시지 숨기기
-    chrome_options.add_argument('--disable-logging')
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--silent')
-    chrome_options.add_argument('--disable-gpu-sandbox')
-    chrome_options.add_argument('--disable-software-rasterizer')
-    
-    # 성능 최적화
-    chrome_options.add_argument('--disable-plugins')
-    chrome_options.add_argument('--disable-java')
-    chrome_options.add_argument('--disable-dev-tools')
-    chrome_options.add_argument('--disable-component-update')
-    chrome_options.add_argument('--disable-domain-reliability')
-    chrome_options.add_argument('--disable-background-networking')
-    
-    return chrome_options
+    return reviews
 
   def load_company_list(self, file_path='company_list.txt'):
     """company_list.txt에서 기업 이름 리스트 가져오기"""
@@ -260,26 +309,37 @@ class CompanyReviewCrawler:
         print("저장할 리뷰가 없습니다.")
         return
       
+      company_name = reviews[0].get('name')
+      
       print("=== 리뷰 저장 시작 ===")
-      # 모든 리뷰를 한 번에 저장 (중복 체크 없이)
-      result = self.collection.insert_many(reviews)
-      print(f"총 {len(result.inserted_ids)}개 리뷰 저장 완료")
       
-      # 기업별 저장 현황 출력
-      company_counts = {}
-      for review in reviews:
-        company_name = review['name']
-        company_counts[company_name] = company_counts.get(company_name, 0) + 1
+      # 기업별 리뷰 중복 확인
+      existing_reviews = self.collection.find_one({"name": company_name})
       
-      for company, count in company_counts.items():
-        print(f"  - {company}: {count}개 리뷰")
+      if existing_reviews:
+        print(f"'{company_name}'의 리뷰가 이미 존재합니다.")
+        existing_count = self.collection.count_documents({"name": company_name})
+        print(f"기존 리뷰 개수: {existing_count}개")
+        print("💡 중복 방지를 위해 저장을 건너뜁니다.")
+        return
+      else:
+        # 새 리뷰 저장
+        result = self.collection.insert_many(reviews)
+        print(f"💾 '{company_name}' 리뷰 {len(result.inserted_ids)}개 저장 완료")
 
     except Exception as e:
       print(f"MongoDB 저장 중 오류 발생: {e}")
 
   def close(self):
-    if self.driver:
-      self.driver.quit()
+    # 리뷰 드라이버 종료
+    if self._review_driver:
+      quit_start = time.time()
+      self._review_driver.quit()
+      quit_time = time.time() - quit_start
+      print(f"   리뷰 드라이버 종료: {quit_time:.2f}초")
+      self._review_driver = None
+    
+    # MongoDB 연결 종료
     if self.client:
       self.client.close()
 

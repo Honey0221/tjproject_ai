@@ -6,6 +6,7 @@ from .database.mongodb import mongodb_manager
 from .database.redis_client import redis_client
 from .database.postgres import tortoise_manager
 from .services.search_service import search_service
+from .services.review_analysis_service import review_analysis_service
 from .routers import company, review, chatbot, emotion, news, analyze, user_review, system
 
 @asynccontextmanager
@@ -46,9 +47,10 @@ async def lifespan(app: FastAPI):
   yield  # 애플리케이션 실행
   
   # 종료 시 드라이버 및 연결 정리
-  if search_service:
+  if search_service and review_analysis_service:
     search_service.cleanup_crawler()
-    print("✅ 크롤러 드라이버 정리 완료")
+    review_analysis_service.cleanup_review_crawler()
+    print("✅ 크롤러 정리 완료")
   
   if mongodb_manager.is_connected:
     await mongodb_manager.disconnect()
