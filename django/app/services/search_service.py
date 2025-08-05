@@ -5,6 +5,7 @@ from typing import Any
 from ..models.company import company_model
 from ..database.redis_client import redis_client
 from ..config import settings
+from crawling.com_crawling import CompanyCrawler
 
 class FinancialDataParser:
   @staticmethod
@@ -166,7 +167,6 @@ class SearchService:
   async def _crawl_company_from_wikipedia(self, company_name: str):
     """Wikipedia에서 기업 정보 크롤링"""
     try:
-      # 임포트는 함수 내부에서 수행 (순환 임포트 방지)
       import sys
       import os
       
@@ -174,8 +174,6 @@ class SearchService:
       django_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
       if django_root not in sys.path:
         sys.path.insert(0, django_root)
-      
-      from crawling.com_crawling import CompanyCrawler
       
       # 크롤러 인스턴스 재사용
       if self._crawler is None:
