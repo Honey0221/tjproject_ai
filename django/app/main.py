@@ -5,6 +5,8 @@ from .config import settings
 from .database.mongodb import mongodb_manager
 from .database.redis_client import redis_client
 from .database.postgres import tortoise_manager
+from .services.search_service import search_service
+from .services.review_analysis_service import review_analysis_service
 from .routers import company, review, chatbot, emotion, news, analyze, user_review, system
 
 @asynccontextmanager
@@ -29,7 +31,7 @@ async def lifespan(app: FastAPI):
   else:
     print("⚠️ Redis 연결 실패 (계속 실행)")
   
-  # PostgreSQL (Tortoise ORM) 연결 시도
+  # PostgreSQL 연결 시도
   await tortoise_manager.connect()
   if tortoise_manager.is_connected:
     print("✅ PostgreSQL 연결 완료")
@@ -44,7 +46,12 @@ async def lifespan(app: FastAPI):
   
   yield  # 애플리케이션 실행
   
-  # 종료 시 연결 정리
+  # 종료 시 드라이버 및 연결 정리
+  if search_service and review_analysis_service:
+    search_service.cleanup_crawler()
+    review_analysis_service.cleanup_review_crawler()
+    print("✅ 크롤러 정리 완료")
+  
   if mongodb_manager.is_connected:
     await mongodb_manager.disconnect()
     print("✅ MongoDB 연결 종료")
@@ -53,7 +60,6 @@ async def lifespan(app: FastAPI):
     await redis_client.disconnect()
     print("✅ Redis 연결 종료")
   
-  # PostgreSQL 종료
   if tortoise_manager.is_connected:
     await tortoise_manager.disconnect()
     print("✅ PostgreSQL 연결 종료")

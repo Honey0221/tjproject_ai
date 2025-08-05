@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from ..schemas.company_schema import CompanySearchResult, CompanyItem
 from ..schemas.news_schema import CompanyNewsResult, NewsItem
 from ..schemas.common_schema import ErrorResponse
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/chatbot", tags=["chatbot"])
   "/search/company",
   response_model=CompanySearchResult,
   summary="기업 검색 (챗봇용)",
-  description="챗봇에서 기업명을 입력받아 검색 결과를 반환합니다.",
+  description="챗봇에서 기업명을 입력받아 검색 결과를 반환합니다. DB에 없는 기업은 자동으로 크롤링합니다.",
   responses={
     200: {"model": CompanySearchResult, "description": "기업 검색 성공"},
     404: {"model": ErrorResponse, "description": "해당 기업의 정보를 찾을 수 없음"},
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/chatbot", tags=["chatbot"])
   }
 )
 async def search_company_for_chatbot(company_name: str):
-  """챗봇용 기업 검색 API"""
+  """챗봇용 기업 검색 API (DB에 없으면 자동 크롤링)"""
   try:
     companies = await search_service.search_company_with_cache(
       name=company_name.strip())

@@ -53,6 +53,7 @@ class SearchService:
   """Redis 전용 비동기 검색 서비스"""
   def __init__(self):
     self.parser = FinancialDataParser()
+    self._crawler = None  # 재사용 가능한 크롤러 인스턴스
   
   def _get_cache_key(self, prefix, keyword):
     """캐시 키 생성"""
@@ -96,7 +97,7 @@ class SearchService:
       return False
   
   async def search_company_with_cache(self, name=None, category=None, cache_time=None):
-    """Redis 캐시를 활용한 기업 검색"""
+    """Redis 캐시를 활용한 기업 검색 (DB에 없으면 자동 크롤링)"""
     cache_time = settings.cache_expire_time
     
     # 검색 키워드 결정
@@ -116,32 +117,81 @@ class SearchService:
       else:
         companies = await company_model.get_companies_by_name(name) if name else []
       
-      # 결과를 JSON 직렬화 가능한 형태로 변환
-      serializable_companies = []
-      for company in companies:
-        serializable_company = {}
-        for key, value in company.items():
-          if key == '_id':
-            serializable_company['id'] = str(value)
-          else:
-            # 모든 값을 안전하게 처리
-            try:
-              # JSON 직렬화 테스트
-              json.dumps(value)
-              serializable_company[key] = value
-            except:
-              # 직렬화 불가능한 값은 문자열로 변환
-              serializable_company[key] = str(value)
-        serializable_companies.append(serializable_company)
+      # 결과가 있으면 기존 방식으로 처리
+      if companies:
+        # 결과를 JSON 직렬화 가능한 형태로 변환
+        serializable_companies = []
+        for company in companies:
+          serializable_company = {}
+          for key, value in company.items():
+            if key == '_id':
+              serializable_company['id'] = str(value)
+            else:
+              # 모든 값을 안전하게 처리
+              try:
+                # JSON 직렬화 테스트
+                json.dumps(value)
+                serializable_company[key] = value
+              except:
+                # 직렬화 불가능한 값은 문자열로 변환
+                serializable_company[key] = str(value)
+          serializable_companies.append(serializable_company)
+        
+        # Redis 캐시에 저장
+        await self._set_to_cache(cache_key, serializable_companies, cache_time)
+        
+        return serializable_companies
       
-      # Redis 캐시에 저장
-      await self._set_to_cache(cache_key, serializable_companies, cache_time)
+      # 결과가 없고 이름으로 검색한 경우
+      elif search_type == "name" and name and name.strip():
+        # 크롤링 진행
+        crawled_company = await self._crawl_company_from_wikipedia(name.strip())
+        
+        if crawled_company:
+          # 크롤링된 데이터를 리스트로 감싸서 반환
+          serializable_companies = [crawled_company]
+          
+          # Redis 캐시에 저장
+          await self._set_to_cache(cache_key, serializable_companies, cache_time)
+          
+          return serializable_companies
       
-      return serializable_companies
+      # 크롤링 실패한 경우
+      return []
       
     except Exception as e:
-      print(f"MongoDB 검색 중 오류 발생: {str(e)}")
+      print(f"검색 중 오류 발생: {str(e)}")
       return []
+  
+  async def _crawl_company_from_wikipedia(self, company_name: str):
+    """Wikipedia에서 기업 정보 크롤링"""
+    try:
+      # 임포트는 함수 내부에서 수행 (순환 임포트 방지)
+      import sys
+      import os
+      
+      # Django 프로젝트 루트 경로를 sys.path에 추가
+      django_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+      if django_root not in sys.path:
+        sys.path.insert(0, django_root)
+      
+      from crawling.com_crawling import CompanyCrawler
+      
+      # 크롤러 인스턴스 재사용
+      if self._crawler is None:
+        print("새 크롤러 인스턴스 생성")
+        self._crawler = CompanyCrawler()
+      else:
+        print("기존 크롤러 인스턴스 재사용")
+      
+      # 단일 기업 크롤링 실행
+      company_info = self._crawler.crawl_single_company_by_name(company_name)
+      
+      return company_info
+      
+    except Exception as e:
+      print(f"크롤링 중 오류 발생: {str(e)}")
+      return None
   
   async def get_top_companies_by_field(self, field_name, year=None, limit=10):
     """특정 필드 기준 상위 기업 조회"""
@@ -230,6 +280,13 @@ class SearchService:
     except Exception as e:
       print(f"캐시 초기화 중 오류 발생: {str(e)}")
       return 0
+
+  def cleanup_crawler(self):
+    """크롤러 리소스 정리"""
+    if self._crawler:
+      print("크롤러 리소스 정리 중...")
+      self._crawler.close_connection()
+      self._crawler = None
 
 # 싱글톤 인스턴스
 search_service = SearchService()

@@ -14,6 +14,7 @@ class ReviewAnalysisService:
   def __init__(self) -> None:
     self.review_dataset = ReviewDataset()
     self.review_analyzer = ReviewSentimentAnalyzer()
+    self._review_crawler = None
   
   def _get_cache_key(self, company_name: str) -> str:
     """리뷰 분석 캐시 키 생성"""
@@ -126,27 +127,74 @@ class ReviewAnalysisService:
       return self._get_default_response()
 
   async def get_reviews(self, name: str) -> List[Dict]:
-    """기업 이름으로 리뷰 데이터 조회"""
-    return await company_review_model.get_reviews_by_company(name)
+    """기업 이름으로 리뷰 데이터 조회 (DB에 없으면 자동 크롤링)"""
+    try:
+      reviews = await company_review_model.get_reviews_by_company(name)
+      
+      if reviews:
+        print(f"📂 DB에서 '{name}' 리뷰 {len(reviews)}개 조회")
+        # ObjectId를 문자열로 변환하여 안전하게 처리
+        cleaned_reviews = []
+        for review in reviews:
+          clean_review = {}
+          for key, value in review.items():
+            if key == '_id':
+              continue  # ObjectId 제외
+            elif key == 'crawled_at':
+              clean_review[key] = str(value)
+            else:
+              clean_review[key] = value
+          cleaned_reviews.append(clean_review)
+        return cleaned_reviews
+      
+      await self._crawl_company_reviews(name)
+      return await self.get_reviews(name)
+        
+    except Exception as e:
+      print(f"❌ 리뷰 데이터 조회 중 오류 발생: {str(e)}")
+      import traceback
+      traceback.print_exc()
+      return []
   
   async def _perform_analysis(self, name: str) -> Dict[str, Any]:
     """실제 리뷰 분석 수행"""
     # 리뷰 데이터 조회
     reviews = await self.get_reviews(name)
     
+    # 빈 리뷰 처리
+    if not reviews:
+      print(f"⚠️ '{name}' 리뷰 데이터가 없어 기본 응답 반환")
+      return self._get_default_response()
+    
+    print(f"📊 '{name}' 리뷰 {len(reviews)}개 분석 시작")
+    
     # 현재 실행 중인 이벤트 루프 가져오기
     loop = asyncio.get_event_loop()
 
-    # 블로킹 방지를 위해 동기 함수를 별도 스레드(executor)에서 실행해 비동기 처리
-    # 리뷰 데이터 전처리
-    df = await loop.run_in_executor(
-      None, self.review_dataset.preprocess_reviews, reviews
-    )
-    
-    # 리뷰 분석 실행
-    return await loop.run_in_executor(
-      None, self.review_analyzer.analyze_reviews_with_keywords, df
-    )
+    try:
+      # 블로킹 방지를 위해 동기 함수를 별도 스레드(executor)에서 실행해 비동기 처리
+      # 리뷰 데이터 전처리
+      df = await loop.run_in_executor(
+        None, self.review_dataset.preprocess_reviews, reviews
+      )
+      
+      # DataFrame이 비어있는지 확인
+      if df.empty:
+        return self._get_default_response()
+      
+      print(f"📋 전처리 완료: {len(df)}개 리뷰 항목")
+      
+      # 리뷰 분석 실행
+      analysis_result = await loop.run_in_executor(
+        None, self.review_analyzer.analyze_reviews_with_keywords, df
+      )
+      
+      print(f"✅ '{name}' 리뷰 분석 완료")
+      return analysis_result
+      
+    except Exception as e:
+      print(f"❌ '{name}' 리뷰 분석 중 오류: {str(e)}")
+      return self._get_default_response()
     
   def _get_default_response(self) -> Dict[str, Any]:
     """분석 실패시 기본 응답"""
@@ -195,6 +243,46 @@ class ReviewAnalysisService:
     except Exception as e:
       print(f"리뷰 분석 캐시 삭제 중 오류: {str(e)}")
       return 0
+
+  async def _crawl_company_reviews(self, company_name: str) -> List[Dict]:
+    """TeamBlind에서 기업 리뷰 크롤링"""
+    try:
+      import sys
+      import os
+      django_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+      if django_root not in sys.path:
+        sys.path.insert(0, django_root)
+      
+      from crawling.com_review_crawling import CompanyReviewCrawler
+      
+      if self._review_crawler is None:
+        print("새 리뷰 크롤러 인스턴스 생성")
+        self._review_crawler = CompanyReviewCrawler()
+      else:
+        print("기존 리뷰 크롤러 인스턴스 재사용")
+      
+      # 현재 실행 중인 이벤트 루프 가져오기
+      loop = asyncio.get_event_loop()
+      
+      # 크롤링 실행 (동기 함수를 비동기로 실행)
+      crawled_reviews = await loop.run_in_executor(
+        None, self._review_crawler.crawl_single_company_reviews, company_name
+      )
+      
+      if crawled_reviews:
+        print(f"✅ 크롤링 완료: {len(crawled_reviews)}개 리뷰")
+        return await company_review_model.get_reviews_by_company(company_name)
+        
+    except Exception as e:
+      print(f"❌ 리뷰 크롤링 중 오류 발생: {str(e)}")
+      return []
+
+  def cleanup_review_crawler(self):
+    """리뷰 크롤러 리소스 정리"""
+    if self._review_crawler:
+      print("리뷰 크롤러 리소스 정리 중...")
+      self._review_crawler.close()
+      self._review_crawler = None
 
 # 싱글톤 인스턴스
 review_analysis_service = ReviewAnalysisService() 
