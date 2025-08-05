@@ -68,7 +68,10 @@ class Settings(BaseSettings):
   @property
   def postgres_url(self) -> str:
     """PostgreSQL 연결 URL 생성"""
-    return f"postgres://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    return (
+      f"postgres://{self.postgres_user}:{self.postgres_password}@"
+      f"{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    )
   
   @property
   def tortoise_orm_config(self) -> dict:

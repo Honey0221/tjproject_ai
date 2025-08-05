@@ -11,7 +11,8 @@ class ReviewCreate(BaseModel):
 
 class ReviewUpdate(BaseModel):
   """리뷰 수정 요청"""
-  content: str = Field(..., min_length=1, max_length=1000, description="수정할 리뷰 내용")
+  content: str = Field(
+    ..., min_length=1, max_length=1000, description="수정할 내용")
 
 class ReviewResponse(BaseModel):
   """리뷰 응답"""

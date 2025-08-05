@@ -23,10 +23,10 @@ async def get_current_user() -> Dict[str, Any]:
   }
 
 @router.post(
-  "", 
+  "",
   response_model=ReviewCreateResponse,
   summary="리뷰 작성",
-  description="새로운 리뷰를 작성합니다. 원글 작성 또는 기존 리뷰에 대한 대댓글 작성이 가능합니다."
+  description="새로운 리뷰 또는 대댓글 작성이 가능합니다."
 )
 async def create_review(
   review: ReviewCreate,
@@ -57,7 +57,7 @@ async def get_review(review_id: str):
 @router.put(
   "/{review_id}",
   summary="리뷰 수정",
-  description="본인이 작성한 리뷰의 내용을 수정합니다."
+  description="본인이 작성한 리뷰나 대댓글의 내용을 수정합니다."
 )
 async def update_review(
   review_id: str,
@@ -72,7 +72,7 @@ async def update_review(
 @router.delete(
   "/{review_id}",
   summary="리뷰 삭제",
-  description="본인이 작성한 리뷰를 삭제합니다."
+  description="본인이 작성한 리뷰나 대댓글을 삭제합니다."
 )
 async def delete_review(
   review_id: str,
