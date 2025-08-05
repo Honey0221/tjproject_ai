@@ -43,8 +43,6 @@ async def root():
         "cache_clear": "DELETE /api/review/cache/clear"
       },
       "chatbot": {
-        "welcome": "GET /api/chatbot/welcome",
-        "action": "POST /api/chatbot/action",
         "company_search": "GET /api/chatbot/search/company",
         "news_search": "GET /api/chatbot/search/news",
         "inquiry": "POST /api/chatbot/inquiry"

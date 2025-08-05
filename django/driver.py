@@ -82,6 +82,41 @@ def undetected_driver(headless=False):
     return driver
 
 
+# ✅ 기업 크롤링용 드라이버
+def company_crawler_driver():
+    chrome_options = webdriver.ChromeOptions()
+    
+    # 기본 설정
+    chrome_options.add_argument('--headless=new')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-images')  # 이미지 불필요
+    chrome_options.add_argument('--log-level=3')  # 로그 최소화
+    
+    # 빠른 시작을 위한 설정
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--disable-plugins')
+    chrome_options.add_argument('--disable-default-apps')
+    
+    # 빠른 종료를 위한 설정
+    chrome_options.add_argument('--disable-background-networking')
+    chrome_options.add_argument('--disable-sync')
+    chrome_options.add_argument('--disable-translate')
+    chrome_options.add_argument('--disable-features=TranslateUI')
+    chrome_options.add_argument('--disable-component-extensions-with-background-pages')
+    
+    # 실험적 옵션 최소화
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
+    )
+
+    return driver
+
 # ✅ 테스트용 실행 (직접 실행 시만 사용)
 if __name__ == "__main__":
     driver = chrome_driver()
