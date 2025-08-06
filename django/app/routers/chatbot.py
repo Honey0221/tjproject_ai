@@ -5,9 +5,7 @@ from ..schemas.common_schema import ErrorResponse
 from ..schemas.chatbot_schema import InquiryRequest, InquiryResponse
 from ..services.search_service import search_service
 from ..models.inquiry import Inquiry
-from app.services.news_service import crawl_latest_articles_db
-import os
-import json
+from ..services.news_service import crawl_latest_articles_db
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
@@ -74,8 +72,8 @@ async def search_company_news_for_chatbot(company_name: str):
     limited_articles = articles[:3] if len(articles) > 3 else articles
 
     return CompanyNewsResult(
-      keyword= company_name.strip(),
-      articles = limited_articles,
+      keyword=company_name.strip(),
+      articles=limited_articles,
       total_count=len(articles)
     )
     
