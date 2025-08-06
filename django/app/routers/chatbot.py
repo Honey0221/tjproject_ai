@@ -69,11 +69,14 @@ async def search_company_for_chatbot(company_name: str):
 async def search_company_news_for_chatbot(company_name: str):
   """챗봇용 뉴스 검색 API"""
   try:
-    articles = crawl_latest_articles_db(keyword=company_name, headless=True)
+    articles = crawl_latest_articles_db(keyword=company_name.strip(), headless=True)
+
+    limited_articles = articles[:3] if len(articles) > 3 else articles
 
     return CompanyNewsResult(
-      keyword= company_name,
-      articles = articles[:3]
+      keyword= company_name.strip(),
+      articles = limited_articles,
+      total_count=len(articles)
     )
     
   except HTTPException:
