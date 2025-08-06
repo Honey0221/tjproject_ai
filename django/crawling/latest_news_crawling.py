@@ -3,7 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
-from driver import undetected_driver  # 사용자 정의 우회 드라이버
+from .driver import undetected_driver  # 사용자 정의 우회 드라이버
 from app.database.db.crawling_database import get_existing_keys
 
 
