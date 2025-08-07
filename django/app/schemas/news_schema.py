@@ -1,4 +1,4 @@
-from typing import Optional, List, Literal, Any
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, BaseModel
 
 # -----------------------------------------------------------------------------
@@ -9,10 +9,6 @@ from pydantic import BaseModel, Field, BaseModel
 class LatestNewsRequest(BaseModel):
     keyword: str                        # 검색 키워드 (필수)
     headless: Optional[bool] = True    # 크롬 브라우저 헤드리스 실행 여부 (기본값 True)
-
-class CompanyNewsResult(BaseModel):
-    keyword: str
-    articles: Optional[List[Any]]
 
 
 # -----------------------------------------------------------------------------

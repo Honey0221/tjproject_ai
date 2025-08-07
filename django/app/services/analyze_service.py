@@ -9,17 +9,9 @@ from app.utils.emotion_model_loader import (
     MODEL_DIR, ALLOWED_MODELS, embedding_model, hf_tokenizer, hf_model, id2label
 )
 
-from app.database.db.crawling_database import get_articles_by_conditions
-
-
 from fastapi import HTTPException
-
-
-from app.utils.news_keywords_cache_utils import get_or_cache
 from app.database.db.crawling_database import get_articles_by_conditions
 from app.config import settings
-
-
 
 #MongoDB 관련
 from datetime import datetime
@@ -31,6 +23,9 @@ from ..database.db.crawling_database import (
 )
 from app.utils.news_keywords_cache_utils import get_or_cache, make_redis_key
 from app.database.redis_client import redis_client
+from app.database.db.crawling_database import get_latest_article_date
+
+
 
 
 MAX_ANALYSIS_AGE = timedelta(days=7)  # 갱신 기준 (7일)
@@ -94,12 +89,6 @@ def analyze_news_filtered(req):
 
 
 async def analyze_news_filtered_with_cache(req):
-    """
-    ✅ Redis 캐시 기반 필터 뉴스 감정 분석
-    - 기사 목록 조회 + 감정 분석 결과 전체를 Redis에 저장
-    """
-
-    # Redis 키: 분석 결과 전체 기준
     redis_key = make_redis_key(
         prefix="emotion_analysis_result",
         keyword=req.keyword,
@@ -111,13 +100,25 @@ async def analyze_news_filtered_with_cache(req):
         max_articles=req.max_articles
     )
 
-    # 1. Redis에서 감정 분석 결과 전체 조회
+    # ✅ [1] 최신 뉴스 일부만 크롤링해서 Redis 캐시 무효화 판단
+    try:
+        latest_articles = get_latest_articles(req.keyword, max_articles=5)
+        latest_keys = [(a.get("title", ""), a.get("date", "")) for a in latest_articles if a.get("title") and a.get("date")]
+
+        existing_map = find_existing_bulk(latest_keys, req.model)
+        if len(existing_map) < len(latest_keys):
+            print("🚨 새 뉴스 발견 → Redis 캐시 무효화")
+            await redis_client.delete(redis_key)
+    except Exception as e:
+        print(f"⚠️ 최신 뉴스 확인 실패 (무시하고 계속 진행): {e}")
+
+    # ✅ [2] Redis 캐시 조회
     cached_result = await redis_client.get_json(redis_key)
     if cached_result:
         print(f"📦 [Redis] 감정 분석 결과 캐시 HIT → {redis_key}")
         return cached_result
 
-    # 2. MongoDB에서 기존 기사 조회
+    # ✅ [3] MongoDB에 기존 기사 있는지 확인
     existing_articles = get_articles_by_conditions(
         keyword=req.keyword,
         start_date=req.start_date,
@@ -126,12 +127,10 @@ async def analyze_news_filtered_with_cache(req):
         incident_category=req.incident_category
     )
 
-    # 3. 있으면 분석 진행
     if existing_articles:
         print(f"🔄 [MongoDB] 기존 기사 {len(existing_articles)}건 분석 수행")
         result = _analyze_articles(existing_articles, req.model, req.keyword)
     else:
-        # 4. 없으면 크롤링
         print(f"🌐 [크롤링 시작] 조건에 맞는 기사 없음 → 크롤링 진행")
         crawled_articles = search_bigkinds(
             keyword=req.keyword,
@@ -149,8 +148,9 @@ async def analyze_news_filtered_with_cache(req):
 
         result = _analyze_articles(crawled_articles, req.model, req.keyword)
 
-    # 5. 분석 결과 Redis에 캐시
+    # ✅ [4] 분석 결과 Redis 저장
     if result:
+        result["cached_at"] = datetime.utcnow().isoformat()
         await redis_client.set_json(
             redis_key,
             result,
@@ -159,6 +159,7 @@ async def analyze_news_filtered_with_cache(req):
         print(f"🧠 Redis에 분석 결과 저장 완료 → {redis_key}")
 
     return result
+
 
 
 

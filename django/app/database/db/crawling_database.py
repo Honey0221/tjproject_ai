@@ -34,6 +34,7 @@ def find_existing_bulk(keys, model):
     - 반환: {(title, date): document} 딕셔너리
     - 중복 저장을 피하기 위해 사전 확인 시 사용
     """
+
     titles = list({t for t, _ in keys})
     dates  = list({d for _, d in keys})
 
@@ -234,4 +235,24 @@ def find_summary_any_model(title, date):
     )
     return doc.get("summary") if doc else None
 
+
+def get_latest_article_date(keyword, start_date, end_date, unified_category, incident_category, model):
+    query = {
+        "keyword": keyword,
+        "model": model,
+    }
+
+    if start_date and end_date:
+        query["date"] = {"$gte": start_date, "$lte": end_date}
+
+    if unified_category:
+        query["unified_category"] = {"$in": unified_category}
+    if incident_category:
+        query["incident_category"] = {"$in": incident_category}
+
+    latest = collection.find(query).sort("analyzed_at", -1).limit(1)
+    doc = next(latest, None)
+    if doc and "analyzed_at" in doc:
+        return doc["analyzed_at"]
+    return None
 

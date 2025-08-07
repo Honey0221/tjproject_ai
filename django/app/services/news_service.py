@@ -296,9 +296,6 @@ async def get_keyword_analysis_with_cache(
 
 
 async def crawl_and_extract_keywords_with_cache(req):
-    """
-    ✅ Redis 기반 키워드 추출 캐시 함수
-    """
     redis_key = make_redis_key(
         prefix="keyword_extraction_result",
         keyword=req.keyword,
@@ -312,13 +309,25 @@ async def crawl_and_extract_keywords_with_cache(req):
         aggregate_mode="individual" if req.aggregate_from_individual else "summary"
     )
 
-    # Redis HIT 시 바로 반환
+    # ✅ [1] 최신 뉴스 중 새 기사 확인 → Redis 무효화
+    try:
+        latest_articles = get_latest_articles(req.keyword, max_articles=5)
+        latest_keys = [(a.get("title", ""), a.get("date", "")) for a in latest_articles if a.get("title") and a.get("date")]
+
+        existing_map = find_existing_bulk(latest_keys, model="keyword_" + req.method)
+        if len(existing_map) < len(latest_keys):
+            print("🚨 새 뉴스 발견 → 키워드 Redis 캐시 무효화")
+            await redis_client.delete(redis_key)
+    except Exception as e:
+        print(f"⚠️ 최신 뉴스 확인 실패 (무시하고 계속 진행): {e}")
+
+    # ✅ [2] Redis HIT 시 바로 반환
     cached_result = await redis_client.get_json(redis_key)
     if cached_result:
         print(f"📦 [Redis] 키워드 추출 결과 캐시 HIT → {redis_key}")
         return cached_result
 
-    # MISS → 실제 추출 실행
+    # ✅ [3] 캐시 MISS → 추출 실행
     result = crawl_and_extract_keywords(req)  # 기존 동기 함수 그대로 사용 가능
 
     if result:
@@ -330,5 +339,6 @@ async def crawl_and_extract_keywords_with_cache(req):
         print(f"🧠 키워드 추출 결과 Redis 저장 완료 → {redis_key}")
 
     return result
+
 
 
