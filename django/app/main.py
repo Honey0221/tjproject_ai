@@ -8,7 +8,7 @@ from .database.postgres import tortoise_manager
 from .services.search_service import search_service
 from .services.review_analysis_service import review_analysis_service
 from .routers import (
-  company, review, chatbot, emotion, news, analyze, user_review, system)
+  company, review, chatbot, emotion, news, analyze, user_review, system, inquiry)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -86,6 +86,7 @@ app.include_router(company.router, prefix="/api")
 app.include_router(review.router, prefix="/api")
 app.include_router(user_review.router, prefix="/api")
 app.include_router(chatbot.router, prefix="/api")
+app.include_router(inquiry.router, prefix="/api")
 app.include_router(emotion.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
 app.include_router(analyze.router, prefix="/api")
