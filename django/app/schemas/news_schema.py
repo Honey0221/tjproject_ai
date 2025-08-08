@@ -1,6 +1,7 @@
 from typing import Optional, List, Literal
 from pydantic import BaseModel, BaseModel
 
+
 # -----------------------------------------------------------------------------
 # ✅ 최신 뉴스 실시간 크롤링 요청 모델
 # - 사용자가 키워드를 입력하면 BigKinds에서 관련 뉴스 5건 실시간 수집
@@ -22,6 +23,7 @@ class CompanyNewsResult(BaseModel):
     keyword: str
     articles: Optional[List[NewsArticle]]
     total_count: int = 0
+
 
 # -----------------------------------------------------------------------------
 # ✅ 키워드 추출 요청 모델 (뉴스 필터 기반 크롤링 후 키워드 뽑기)

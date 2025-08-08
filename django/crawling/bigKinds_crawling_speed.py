@@ -15,7 +15,7 @@ from selenium.common.exceptions import (
     StaleElementReferenceException,
 )
 
-from driver import undetected_driver  # ✅ 사용자 정의 우회 드라이버 (필수)
+from .driver import undetected_driver  # ✅ 사용자 정의 우회 드라이버 (필수)
 
 from app.database.db.crawling_database import get_existing_keys, find_summary_any_model
 from app.database.db.crawling_database import find_existing_article
