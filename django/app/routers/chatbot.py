@@ -5,9 +5,7 @@ from ..schemas.common_schema import ErrorResponse
 from ..schemas.chatbot_schema import InquiryRequest, InquiryResponse
 from ..services.search_service import search_service
 from ..models.inquiry import Inquiry
-from app.services.news_service import crawl_latest_articles_db
-import os
-import json
+from ..services.news_service import crawl_latest_articles_db
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
@@ -69,11 +67,14 @@ async def search_company_for_chatbot(company_name: str):
 async def search_company_news_for_chatbot(company_name: str):
   """챗봇용 뉴스 검색 API"""
   try:
-    articles = crawl_latest_articles_db(keyword=company_name, headless=True)
+    articles = crawl_latest_articles_db(keyword=company_name.strip(), headless=True)
+
+    limited_articles = articles[:3] if len(articles) > 3 else articles
 
     return CompanyNewsResult(
-      keyword= company_name,
-      articles = articles[:3]
+      keyword=company_name.strip(),
+      articles=limited_articles,
+      total_count=len(articles)
     )
     
   except HTTPException:
@@ -101,12 +102,14 @@ async def create_inquiry(inquiry: InquiryRequest):
   try:
     # Tortoise ORM을 사용해 문의사항 생성
     await Inquiry.create_inquiry(
+      user_name=inquiry.user_name,
+      inquiry_title=inquiry.inquiry_title,
       inquiry_type=inquiry.inquiry_type,
       inquiry_content=inquiry.inquiry_content
     )
     
     return InquiryResponse(
-      message="문의사항이 성공적으로 등록되었습니다. 빠른 시일 내에 답변드리겠습니다."
+      message="문의사항이 성공적으로 등록되었습니다."
     )
     
   except Exception as e:

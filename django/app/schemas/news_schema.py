@@ -1,5 +1,5 @@
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, BaseModel
+from pydantic import BaseModel, BaseModel
 
 # -----------------------------------------------------------------------------
 # ✅ 최신 뉴스 실시간 크롤링 요청 모델
@@ -10,6 +10,18 @@ class LatestNewsRequest(BaseModel):
     keyword: str                        # 검색 키워드 (필수)
     headless: Optional[bool] = True    # 크롬 브라우저 헤드리스 실행 여부 (기본값 True)
 
+class NewsArticle(BaseModel):
+    title: str
+    summary: str
+    press: str
+    date: str
+    writer: str
+    link: str
+
+class CompanyNewsResult(BaseModel):
+    keyword: str
+    articles: Optional[List[NewsArticle]]
+    total_count: int = 0
 
 # -----------------------------------------------------------------------------
 # ✅ 키워드 추출 요청 모델 (뉴스 필터 기반 크롤링 후 키워드 뽑기)
