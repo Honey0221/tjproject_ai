@@ -46,12 +46,3 @@ class Inquiry(Model):
     except Exception as e:
       print(f"최근 문의사항 조회 오류: {str(e)}")
       raise e
-
-  @classmethod
-  async def count_by_type(cls, inquiry_type):
-    """유형별 문의사항 개수"""
-    try:
-      return await cls.filter(inquiry_type=inquiry_type).count()
-    except Exception as e:
-      print(f"유형별 문의사항 개수 조회 오류: {str(e)}")
-      raise e

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List
 from datetime import datetime
 
 class InquiryRequest(BaseModel):
@@ -11,3 +11,15 @@ class InquiryRequest(BaseModel):
 class InquiryResponse(BaseModel):
   """문의하기 응답 스키마"""
   message: str = Field(..., description="응답 메시지")
+
+class InquiryItem(BaseModel):
+  """문의사항 항목 스키마"""
+  id: int = Field(..., description="문의 ID")
+  inquiry_type: str = Field(..., description="문의 유형")
+  inquiry_content: str = Field(..., description="문의 내용")
+  created_at: datetime = Field(..., description="생성 시간")
+
+class InquiryListResponse(BaseModel):
+  """문의사항 목록 응답 스키마"""
+  inquiries: List[InquiryItem] = Field(..., description="문의사항 목록")
+  total_count: int = Field(..., description="총 문의사항 개수")
