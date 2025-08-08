@@ -102,12 +102,14 @@ async def create_inquiry(inquiry: InquiryRequest):
   try:
     # Tortoise ORM을 사용해 문의사항 생성
     await Inquiry.create_inquiry(
+      user_name=inquiry.user_name,
+      inquiry_title=inquiry.inquiry_title,
       inquiry_type=inquiry.inquiry_type,
       inquiry_content=inquiry.inquiry_content
     )
     
     return InquiryResponse(
-      message="문의사항이 성공적으로 등록되었습니다. 빠른 시일 내에 답변드리겠습니다."
+      message="문의사항이 성공적으로 등록되었습니다."
     )
     
   except Exception as e:
