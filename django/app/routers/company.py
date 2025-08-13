@@ -65,8 +65,8 @@ async def search_companies(
   }
 )
 async def get_company_ranking(
-  year: int = Query(2024, description="조회할 연도", ge=2020, le=2030),
-  limit: int = Query(10, description="조회할 기업 수", ge=1, le=50)
+  year: int = Query(2024, description="조회할 연도"),
+  limit: int = Query(10, description="조회할 기업 수")
 ):
   """기업 재무 랭킹 조회 API"""
   try:

@@ -403,8 +403,10 @@ class CompanyCrawler:
     search_service.py에서 사용하기 위한 메서드
     """
     try:
+      # 1. 크롤링 드라이버 생성
       driver = self._get_or_create_single_driver()
       
+      # 2. 위키피디아에 접속해서 크롤링 진행
       wikipedia_url = f"https://ko.wikipedia.org/wiki/{company_name}"
       
       driver.get(wikipedia_url)
@@ -412,26 +414,22 @@ class CompanyCrawler:
       
       company_info = self._extract_company_info(driver, company_name)
       
-      if company_info:
-        self.save_to_mongodb(company_info)
+      # 3. MongoDB에 저장
+      self.save_to_mongodb(company_info)
+      
+      # 4. JSON 직렬화
+      serializable_company = {}
+      for key, value in company_info.items():
+        if key != '_id':
+          try:
+            import json
+            json.dumps(value)
+            serializable_company[key] = value
+          except:
+            # 직렬화 불가능한 값은 문자열로 변환
+            serializable_company[key] = str(value)
         
-        # JSON 직렬화 가능한 형태로 변환하여 반환
-        serializable_company = {}
-        for key, value in company_info.items():
-          if key != '_id':
-            # 모든 값을 안전하게 처리
-            try:
-              import json
-              json.dumps(value)
-              serializable_company[key] = value
-            except:
-              # 직렬화 불가능한 값은 문자열로 변환
-              serializable_company[key] = str(value)
-        
-        return serializable_company
-      else:
-        print(f"❌ '{company_name}' 기업 정보를 찾을 수 없습니다.")
-        return None
+      return serializable_company
         
     except Exception as e:
       print(f"❌ '{company_name}' 크롤링 중 오류 발생: {e}")

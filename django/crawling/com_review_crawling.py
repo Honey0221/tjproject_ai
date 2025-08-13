@@ -45,22 +45,10 @@ class CompanyReviewCrawler:
       # 3. 리뷰 데이터 추출
       reviews = self._extract_reviews(driver, company_name)
       
-      if reviews:
-        # 4. MongoDB 저장
-        self.save_reviews_to_db(reviews)
-        
-        # 첫 번째 리뷰 샘플 출력
-        if len(reviews) > 0:
-          first_review = reviews[0]
-          print(f"\n[샘플 리뷰]")
-          print(f"기업: {first_review['name']}")
-          print(f"장점: {first_review['pros'][:100]}...")
-          print(f"단점: {first_review['cons'][:100]}...\n")
-        
-        return reviews
-      else:
-        print(f"❌ '{company_name}' 리뷰를 찾을 수 없습니다.")
-        return []
+      # 4. MongoDB 저장
+      self.save_reviews_to_db(reviews)
+      
+      return reviews
         
     except Exception as e:
       print(f"❌ '{company_name}' 리뷰 크롤링 중 오류 발생: {e}")

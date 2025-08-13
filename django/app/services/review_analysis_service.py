@@ -127,13 +127,12 @@ class ReviewAnalysisService:
       return self._get_default_response()
 
   async def get_reviews(self, name: str) -> List[Dict]:
-    """기업 이름으로 리뷰 데이터 조회 (DB에 없으면 자동 크롤링)"""
+    """기업 이름으로 리뷰 데이터 조회"""
     try:
       reviews = await company_review_model.get_reviews_by_company(name)
       
+      # DB에 있으면 직렬화 후 반환
       if reviews:
-        print(f"📂 DB에서 '{name}' 리뷰 {len(reviews)}개 조회")
-        # ObjectId를 문자열로 변환하여 안전하게 처리
         cleaned_reviews = []
         for review in reviews:
           clean_review = {}
@@ -146,25 +145,19 @@ class ReviewAnalysisService:
               clean_review[key] = value
           cleaned_reviews.append(clean_review)
         return cleaned_reviews
-      
-      await self._crawl_company_reviews(name)
-      return await self.get_reviews(name)
+      # DB에 없으면 크롤링 후 재귀적으로 다시 조회
+      else:
+        await self._crawl_company_reviews(name)
+        return await self.get_reviews(name)
         
     except Exception as e:
       print(f"❌ 리뷰 데이터 조회 중 오류 발생: {str(e)}")
-      import traceback
-      traceback.print_exc()
       return []
   
   async def _perform_analysis(self, name: str) -> Dict[str, Any]:
     """실제 리뷰 분석 수행"""
     # 리뷰 데이터 조회
     reviews = await self.get_reviews(name)
-    
-    # 빈 리뷰 처리
-    if not reviews:
-      print(f"⚠️ '{name}' 리뷰 데이터가 없어 기본 응답 반환")
-      return self._get_default_response()
     
     print(f"📊 '{name}' 리뷰 {len(reviews)}개 분석 시작")
     

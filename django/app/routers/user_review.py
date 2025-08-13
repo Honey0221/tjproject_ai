@@ -33,7 +33,9 @@ async def create_review(
   current_user: Dict[str, Any] = Depends(get_current_user)
 ):
   """리뷰 작성"""
-  review_id = await user_review_service.create_review(review, current_user["user_id"])
+  review_id = await user_review_service.create_review(
+    review, current_user["user_id"]
+  )
   
   return ReviewCreateResponse(
     message="리뷰가 성공적으로 작성되었습니다",
