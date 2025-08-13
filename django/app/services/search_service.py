@@ -109,9 +109,16 @@ class SearchService:
       search_keyword = f"name:{name if name else ''}"
       search_type = "name"
     
+    # 캐시 키 생성
     cache_key = self._get_cache_key("company_search", search_keyword)
     
-    # MongoDB에서 검색
+    # 1. 먼저 캐시에서 조회
+    cached_result = await self._get_from_cache(cache_key)
+    if cached_result:
+      print(f"🎯 Redis 캐시에서 기업 검색 결과 조회 성공: {cache_key}")
+      return cached_result
+    
+    # 2. 캐시에 없으면 MongoDB에서 검색
     try:
       if search_type == "category":
         companies = await company_model.get_companies_by_category(category)
@@ -143,13 +150,12 @@ class SearchService:
         
         return serializable_companies
       
-      # 결과가 없고 이름으로 검색한 경우
+      # 이름으로 검색한 결과가 없는 경우
       elif search_type == "name" and name and name.strip():
         # 크롤링 진행
         crawled_company = await self._crawl_company_from_wikipedia(name.strip())
         
         if crawled_company:
-          # 크롤링된 데이터를 리스트로 감싸서 반환
           serializable_companies = [crawled_company]
           
           # Redis 캐시에 저장
@@ -224,25 +230,25 @@ class SearchService:
 
   async def get_comprehensive_ranking(self, year=2024, limit=10, cache_time=None):
     """연도별 종합 재무 랭킹 조회 (매출액, 영업이익, 순이익)"""
-    if cache_time is None:
-      cache_time = settings.ranking_cache_expire_time
+    cache_time = settings.ranking_cache_expire_time
     
     cache_key = self._get_cache_key("comprehensive_ranking", f"{year}_{limit}")
     
-    # 캐시에서 조회
-    cached_result = await self._get_from_cache(cache_key)
-    if cached_result:
-      return cached_result
-    
     try:
-      # 각 필드별 랭킹 조회
+      # 1. 먼저 캐시에서 조회
+      cached_rankings = await self._get_from_cache(cache_key)
+      if cached_rankings:
+        print(f"🎯 Redis 캐시에서 랭킹 조회 성공: {cache_key}")
+        return cached_rankings
+      
+      # 2. 캐시에 없으면 DB에서 조회
       rankings = {
         '매출액': await self.get_top_companies_by_field('매출액', year, limit),
         '영업이익': await self.get_top_companies_by_field('영업이익', year, limit),
         '순이익': await self.get_top_companies_by_field('순이익', year, limit)
       }
       
-      # Redis 캐시에 저장
+      # 3. 조회 결과를 캐시에 저장
       await self._set_to_cache(cache_key, rankings, cache_time)
       
       return rankings
