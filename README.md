@@ -50,33 +50,78 @@ TJ Project AI는 기업 정보 수집, 리뷰 분석, 감정 분석, 뉴스 키�
   - KeyBERT 0.9.0
 - **웹 크롤링**: Selenium 4.34.2, BeautifulSoup4
 
-## 📁 주요 디렉토리 구조
+## 📁 프로젝트 구조
 
-### 백엔드 (`django/`)
 ```
-app/
-├── routers/           # API 엔드포인트
-│   ├── company.py     # 기업 검색/랭킹 API
-│   ├── review.py      # 리뷰 분석 API
-│   ├── emotion.py     # 감정 분석 API
-│   ├── news.py        # 뉴스 분석 API
-│   └── chatbot.py     # 챗봇 API
-├── services/          # 비즈니스 로직
-├── models/           # 데이터 모델
-├── database/         # 데이터베이스 연결
-└── utils/           # 유틸리티 함수
-
-crawling/
-├── com_crawling.py           # 기업 정보 크롤링
-├── com_review_crawling.py    # 기업 리뷰 크롤링
-├── latest_news_crawling.py   # 최신 뉴스 크롤링
-└── bigKinds_crawling_speed.py # BigKinds API 크롤링
-
-emotionAnalysisModels/
-├── baseEnsembleModels/       # 앙상블 ML 모델들
-├── emotionKcbertModels/      # KcBERT 모델
-├── emotionData/             # 학습 데이터
-└── emotionPredictModel.py   # 감정 예측 모델
+django/
+├── app/                          
+│   ├── main.py                   # FastAPI 애플리케이션 진입점
+│   ├── config.py                 # 환경 설정
+│   ├── database/                 # 데이터베이스 연결 관리
+│   │   ├── __init__.py
+│   │   ├── mongodb.py            # MongoDB 연결
+│   │   ├── postgres.py           # PostgreSQL 연결
+│   │   ├── redis_client.py       # Redis 클라이언트
+│   │   └── db/
+│   │       └── crawling_database.py
+│   ├── models/                   # 데이터 모델
+│   │   ├── company.py            
+│   │   └── inquiry.py            
+│   ├── routers/                  # API 엔드포인트
+│   │   ├── analyze.py            
+│   │   ├── chatbot.py         
+│   │   ├── company.py          
+│   │   ├── emotion.py          
+│   │   ├── inquiry.py          
+│   │   ├── news.py             
+│   │   ├── review.py             
+│   │   ├── system.py            
+│   │   └── user_review.py       
+│   ├── schemas/                  # Pydantic 스키마
+│   │   ├── analyze_schema.py
+│   │   ├── chatbot_schema.py
+│   │   ├── common_schema.py
+│   │   ├── company_schema.py
+│   │   ├── emotion_schema.py
+│   │   ├── news_schema.py
+│   │   ├── review_analysis_schema.py
+│   │   └── user_review_schema.py
+│   ├── services/                 
+│   │   ├── analyze_service.py    # 뉴스 분석 서비스
+│   │   ├── emotion_service.py    # 감정 분석 서비스
+│   │   ├── news_service.py       # 뉴스 서비스
+│   │   ├── review_analysis_service.py # 리뷰 분석 서비스
+│   │   ├── search_service.py     # 기업 검색 서비스
+│   │   └── user_review_service.py
+│   └── utils/                    # 유틸리티 함수
+├── crawling/                     
+│   ├── bigKinds_crawling_speed.py    # BigKinds API 크롤링
+│   ├── com_crawling.py               # 기업 정보 크롤링
+│   ├── com_review_crawling.py        # 기업 리뷰 크롤링
+│   ├── driver.py                     # 웹 드라이버 관리
+│   ├── latest_news_crawling.py       # 최신 뉴스 크롤링
+│   └── newsCrawlingData/             # 크롤링된 뉴스 데이터
+├── emotionAnalysisModels/        # 뉴스 감정 분석 모델
+│   ├── baseEnsembleModels/       # 앙상블 ML 모델들
+│   ├── emotionData/              # 학습 데이터
+│   ├── emotionKcbertModels/      # KcBERT 모델
+│   ├── predictData/              # 예측 결과 데이터
+│   ├── article_predictions.csv   # 기사 예측 결과
+│   ├── emotionBaseModelTrain.py  # 기본 모델 훈련
+│   ├── emotionData.py           # 감정 데이터 처리
+│   ├── emotionDataEmbedding.py  # 데이터 임베딩
+│   ├── emotionKcbertModelTrain.py # KcBERT 모델 훈련
+│   └── emotionPredictModel.py   # 감정 예측 모델
+├── emotionUtils/                 # 감정 분석 유틸리티
+├── machine_model/                # 리뷰 분석 모델
+│   └── company_review/
+│       ├── review_analyzer.py    # 리뷰 분석기
+│       └── review_dataset.py     # 리뷰 데이터셋
+├── tests/                        # 테스트 파일
+│   ├── test_company_review.py
+│   └── test_company_search.py
+├── requirements.txt              # Python 의존성
+└── run_fastapi.py               # 서버 실행 스크립트
 ```
 
 ## 🔧 설치 및 실행
@@ -172,7 +217,7 @@ python run_fastapi.py
    - Logistic Regression
 
 ### 리뷰 분석 모델
-- **KoELECTRA**: `Copycats/koelectra-base-v3-generalized-sentiment-analysis`
+- **KoELECTRA 모델**: `Copycats/koelectra-base-v3-generalized-sentiment-analysis`
 - **모델 특징**: KOELECTRA의 감정 분석이 특화되도록 파인 튜닝한 모델
 - **키워드 추출**: KeyBERT 기반
 
