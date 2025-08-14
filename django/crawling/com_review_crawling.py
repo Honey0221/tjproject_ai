@@ -15,37 +15,19 @@ class CompanyReviewCrawler:
 
     # 메인 드라이버 (리뷰 수집용)
     self.driver = company_review_crawler_driver()
-    
-    # 재사용 가능한 드라이버
-    self._review_driver = None
-
-  def _get_or_create_review_driver(self):
-    """재사용 가능한 리뷰 크롤링 드라이버 반환"""
-    if self._review_driver is None:
-      print("새 리뷰 드라이버 생성 중...")
-      self._review_driver = company_review_crawler_driver()
-    else:
-      print("기존 리뷰 드라이버 재사용")
-    return self._review_driver
 
   def crawl_single_company_reviews(self, company_name: str):
-    """
-    단일 기업의 TeamBlind 리뷰 크롤링
-    URL: https://www.teamblind.com/kr/company/{company_name}/reviews
-    """
+    """TeamBlind 리뷰 크롤링"""
     try:
-      # 1. 재사용 드라이버 가져오기
-      driver = self._get_or_create_review_driver()
-      
-      # 2. 직접 리뷰 페이지로 이동
+      # 1. 리뷰 페이지로 이동
       review_url = f"https://www.teamblind.com/kr/company/{company_name}/reviews"
-      driver.get(review_url)
+      self.driver.get(review_url)
       time.sleep(2)
       
-      # 3. 리뷰 데이터 추출
-      reviews = self._extract_reviews(driver, company_name)
+      # 2. 리뷰 데이터 추출
+      reviews = self._extract_reviews(company_name)
       
-      # 4. MongoDB 저장
+      # 3. MongoDB 저장
       self.save_reviews_to_db(reviews)
       
       return reviews
@@ -54,13 +36,13 @@ class CompanyReviewCrawler:
       print(f"❌ '{company_name}' 리뷰 크롤링 중 오류 발생: {e}")
       return []
 
-  def _extract_reviews(self, driver, company_name):
+  def _extract_reviews(self, company_name):
     """리뷰 데이터 추출"""
     reviews = []
     
     try:
       # 리뷰 요소 찾기
-      review_elements = driver.find_elements(By.CLASS_NAME, "review_item")
+      review_elements = self.driver.find_elements(By.CLASS_NAME, "review_item")
       
       if not review_elements:
         print(f"   '{company_name}' 페이지에서 리뷰를 찾을 수 없습니다.")
@@ -134,14 +116,14 @@ class CompanyReviewCrawler:
       print(f"기업 리스트 로드 중 오류 발생: {e}")
       return []
 
-  def crawl_company_reviews(self, company_name, base_url, driver):
+  def crawl_company_reviews(self, company_name, base_url):
     """특정 기업의 리뷰 크롤링"""
     try:
-      driver.get(base_url)
+      self.driver.get(base_url)
       
       # 검색창 찾기
       try:
-        search_elements = driver.find_elements(By.CSS_SELECTOR, ".srch_box input")
+        search_elements = self.driver.find_elements(By.CSS_SELECTOR, ".srch_box input")
         for element in search_elements:
           if element.is_displayed() and element.is_enabled():
             search_input = element
@@ -167,7 +149,7 @@ class CompanyReviewCrawler:
       
       # 검색 실행
       try:
-        first_company_item = driver.find_element(
+        first_company_item = self.driver.find_element(
           By.CSS_SELECTOR, ".auto_wp ul.companies li:first-child")
         
         item_name = first_company_item.get_attribute('name')
@@ -184,7 +166,7 @@ class CompanyReviewCrawler:
       
       # 해당 기업의 리뷰 페이지로 이동
       try:
-        review_links = driver.find_elements(
+        review_links = self.driver.find_elements(
           By.CSS_SELECTOR, ".inner_wp li.swiper-slide:nth-child(2)")
         if len(review_links) > 0:
           review_links[0].click()
@@ -199,7 +181,7 @@ class CompanyReviewCrawler:
       reviews = []
       
       try:
-        review_elements = driver.find_elements(By.CLASS_NAME, "review_item")
+        review_elements = self.driver.find_elements(By.CLASS_NAME, "review_item")
         
         for review_element in review_elements:
           # 리뷰 태그 찾기
@@ -266,7 +248,7 @@ class CompanyReviewCrawler:
       try:
         print(f"{company_idx+1}/{len(companies)}: {company_name} 처리 중...")
         
-        reviews = self.crawl_company_reviews(company_name, base_url, self.driver)
+        reviews = self.crawl_company_reviews(company_name, base_url)
         
         if reviews:
           print(f"  ✅ {company_name} 리뷰 {len(reviews)}개 수집 성공")
@@ -319,14 +301,10 @@ class CompanyReviewCrawler:
     except Exception as e:
       print(f"MongoDB 저장 중 오류 발생: {e}")
 
-  def close(self):
+  def close_connection(self):
     # 리뷰 드라이버 종료
-    if self._review_driver:
-      quit_start = time.time()
-      self._review_driver.quit()
-      quit_time = time.time() - quit_start
-      print(f"   리뷰 드라이버 종료: {quit_time:.2f}초")
-      self._review_driver = None
+    if self.driver:
+      self.driver.quit()
     
     # MongoDB 연결 종료
     if self.client:
@@ -352,4 +330,4 @@ if __name__ == "__main__":
     print(f"크롤링 중 오류 발생: {e}")
 
   finally:
-    crawler.close() 
+    crawler.close_connection() 

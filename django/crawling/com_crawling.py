@@ -20,9 +20,6 @@ class CompanyCrawler:
     
     # 메인 드라이버 (기업 정보 수집용)
     self.driver = company_crawler_driver()
-    
-    # 단일 크롤링용 재사용 드라이버
-    self._single_driver = None
 
   def _crawl_single_company(self, company_data):
     """단일 기업 크롤링 (스레드에서 실행)"""
@@ -37,7 +34,7 @@ class CompanyCrawler:
       self.driver.get(href)
       
       # infobox 정보 수집
-      company_info = self._extract_company_info(self.driver, company_name)
+      company_info = self._extract_company_info(company_name)
       
       if company_info:
         print(
@@ -53,10 +50,10 @@ class CompanyCrawler:
         f"❌ {company_idx+1}/{total_companies}: {company_name} 크롤링 오류 - {e}")
       return None
 
-  def _extract_company_info(self, driver, company_name):
-    """기업 정보 추출"""
+  def _extract_company_info(self, company_name):
+    """기업 정보 추출"""  
     # infobox vcard 테이블이 있는지 확인
-    infobox_elements = driver.find_elements(By.CSS_SELECTOR, "table.infobox.vcard")
+    infobox_elements = self.driver.find_elements(By.CSS_SELECTOR, "table.infobox.vcard")
     if not infobox_elements:
       print(f"'{company_name}' 페이지에 없습니다.")
       return None
@@ -110,7 +107,7 @@ class CompanyCrawler:
           company_info[key] = value
       
     # 요약 정보
-    summary_paragraphs = driver.find_elements(
+    summary_paragraphs = self.driver.find_elements(
       By.CSS_SELECTOR, "div.mw-parser-output > p")
     if summary_paragraphs:
       summary_text = ""
@@ -387,15 +384,6 @@ class CompanyCrawler:
       company_names.append(clean_name)
     
     return company_names
-  
-  def _get_or_create_single_driver(self):
-    """재사용 가능한 단일 크롤링 드라이버 반환"""
-    if self._single_driver is None:
-      print("새 드라이버 생성 중...")
-      self._single_driver = company_crawler_driver()
-    else:
-      print("기존 드라이버 재사용")
-    return self._single_driver
 
   def crawl_single_company_by_name(self, company_name: str):
     """
@@ -403,16 +391,13 @@ class CompanyCrawler:
     search_service.py에서 사용하기 위한 메서드
     """
     try:
-      # 1. 크롤링 드라이버 생성
-      driver = self._get_or_create_single_driver()
-      
-      # 2. 위키피디아에 접속해서 크롤링 진행
+      # 1. 위키피디아에 접속해서 크롤링 진행
       wikipedia_url = f"https://ko.wikipedia.org/wiki/{company_name}"
       
-      driver.get(wikipedia_url)
+      self.driver.get(wikipedia_url)
       time.sleep(1) 
       
-      company_info = self._extract_company_info(driver, company_name)
+      company_info = self._extract_company_info(company_name)
       
       # 3. MongoDB에 저장
       self.save_to_mongodb(company_info)
@@ -437,13 +422,8 @@ class CompanyCrawler:
 
   def close_connection(self):
     # 메인 드라이버 종료
-    if hasattr(self, 'driver') and self.driver:
+    if self.driver:
       self.driver.quit()
-    
-    # 단일 크롤링 드라이버 종료
-    if self._single_driver:
-      self._single_driver.quit()
-      self._single_driver = None
     
     # MongoDB 연결 종료
     self.client.close()

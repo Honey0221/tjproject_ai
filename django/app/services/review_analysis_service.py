@@ -274,7 +274,7 @@ class ReviewAnalysisService:
     """리뷰 크롤러 리소스 정리"""
     if self._review_crawler:
       print("리뷰 크롤러 리소스 정리 중...")
-      self._review_crawler.close()
+      self._review_crawler.close_connection()
       self._review_crawler = None
 
 # 싱글톤 인스턴스
